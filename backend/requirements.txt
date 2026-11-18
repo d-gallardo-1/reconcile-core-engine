@@ -1,0 +1,7 @@
+fastapi==0.163.2
+uvicorn==0.54.0
+pydantic==2.14.3
+openpyxl==3.1.5
+# openpyxl uses defusedxml automatically when it is installed; it hardens XML
+# parsing for uploaded workbooks.
+defusedxml==0.7.1

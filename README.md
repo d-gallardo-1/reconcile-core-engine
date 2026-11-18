@@ -5,6 +5,8 @@
 **On-premises multi-source reconciliation engine for ERP ledgers, bank feeds and tax
 registries, with live progress over Server-Sent Events.**
 
+![Reconcile Core Engine demo: a tax gap scenario is injected, the live three-pass run completes, the anomaly is opened and its variance is approved with an audit note](docs/demo.gif)
+
 > **Reference architecture demo.** The fictional entity *Veritas Ledger Systems — International
 > Audit Division* and every counterparty, invoice and amount are synthetic. The service
 > is not connected to any ERP, bank or tax authority, has no authentication, and keeps

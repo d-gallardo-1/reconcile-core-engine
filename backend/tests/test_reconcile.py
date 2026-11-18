@@ -12,7 +12,7 @@ TOLERANCE_CASES = ("TX-9010", "TX-9011", "TX-9012")
 def set_tolerance(client, amount: float, days: int) -> dict:
     response = client.post(
         f"{API}/reconcile/tolerance",
-        json={"amount_tolerance_gbp": amount, "date_window_days": days},
+        json={"amount_tolerance": amount, "date_window_days": days},
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -29,18 +29,18 @@ def test_default_batch_is_9_exact_3_tolerance_3_anomalies(client):
     assert (kpis["total_records"], kpis["exact_count"]) == (15, 9)
     assert (kpis["tolerance_count"], kpis["anomaly_count"], kpis["resolved_count"]) == (3, 3, 0)
     assert kpis["match_rate_pct"] == 80.0
-    assert state["tolerance"] == {"amount_tolerance_gbp": 15.0, "date_window_days": 2}
+    assert state["tolerance"] == {"amount_tolerance": 15.0, "date_window_days": 2}
     by_id = {record["tx_id"]: record for record in state["records"]}
     assert by_id["TX-9001"]["matched_in_pass"] == 1
-    assert by_id["TX-9010"]["variance_gbp"] == -15.0
+    assert by_id["TX-9010"]["variance"] == -15.0
     assert by_id["TX-9011"]["date_shift_days"] == 2
-    assert by_id["TX-9012"]["variance_gbp"] == -0.6
+    assert by_id["TX-9012"]["variance"] == -0.6
     assert {by_id[tx]["status"] for tx in TOLERANCE_CASES} == {"TOLERANCE_MATCH"}
     assert by_id["TX-9013"]["anomaly_type"] == "AMOUNT_VARIANCE"
     assert by_id["TX-9014"]["anomaly_type"] == "SETTLEMENT_DATE_SHIFT"
     assert by_id["TX-9015"]["anomaly_type"] == "VAT_MISMATCH"
     # Net variance of the open anomalies: only TX-9013 carries an amount delta.
-    assert kpis["net_unreconciled_variance_gbp"] == -180.0
+    assert kpis["net_unreconciled_variance"] == -180.0
 
 
 @pytest.mark.parametrize(
@@ -67,11 +67,11 @@ def test_tolerance_is_re_evaluated_immediately(client, amount, days, expected_to
 @pytest.mark.parametrize(
     "body",
     [
-        {"amount_tolerance_gbp": -1, "date_window_days": 2},
-        {"amount_tolerance_gbp": 50.01, "date_window_days": 2},
-        {"amount_tolerance_gbp": 15, "date_window_days": 6},
-        {"amount_tolerance_gbp": 15, "date_window_days": 1.5},
-        {"amount_tolerance_gbp": 15},
+        {"amount_tolerance": -1, "date_window_days": 2},
+        {"amount_tolerance": 50.01, "date_window_days": 2},
+        {"amount_tolerance": 15, "date_window_days": 6},
+        {"amount_tolerance": 15, "date_window_days": 1.5},
+        {"amount_tolerance": 15},
     ],
 )
 def test_tolerance_rejects_out_of_range_values(client, body):
@@ -94,7 +94,7 @@ def test_scenario_injection(client, code, tx_id, anomaly_type, variance):
     state = response.json()
     record = next(r for r in state["records"] if r["tx_id"] == tx_id)
     assert (record["status"], record["anomaly_type"]) == ("ANOMALY", anomaly_type)
-    assert record["variance_gbp"] == variance
+    assert record["variance"] == variance
     assert state["kpis"]["total_records"] == 16
     assert state["kpis"]["anomaly_count"] == 4
     assert next(s for s in state["scenarios"] if s["code"] == code)["active"] is True
@@ -119,7 +119,7 @@ def test_resolution_workflow_and_reset(client):
     assert record["status"] == "RESOLVED"
     assert record["resolution"]["action"] == "FLAG_FOR_CREDIT_NOTE"
     assert record["resolution"]["resolution_note"] == "Retention certificate requested."
-    assert record["resolution"]["variance_gbp"] == -1800.0
+    assert record["resolution"]["variance"] == -1800.0
     resolved_at = record["resolution"]["resolved_at"]
     assert resolved_at.endswith("Z") or "+00:00" in resolved_at
     assert (state["kpis"]["resolved_count"], state["kpis"]["anomaly_count"]) == (1, 3)

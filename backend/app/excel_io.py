@@ -20,9 +20,11 @@ from pydantic import ValidationError
 from . import excel_schema as schema
 from .excel_schema import Column
 from .excel_summary import summary_rows
-from .models import BatchState, LedgerTransaction, MatchStatus, ReconciledRecord
+from .batch_models import BatchState
+from .currencies import get_currency
+from .models import LedgerTransaction, MatchStatus, ReconciledRecord
 
-MAX_ROWS = 5000
+MAX_ROWS = schema.MAX_ROWS
 _HEADER_FONT = Font(bold=True, color="FFFFFF")
 _HEADER_FILL = PatternFill("solid", fgColor="1F2937")
 
@@ -37,7 +39,9 @@ class WorkbookError(ValueError):
         self.errors = errors
 
 
-def _write_table(sheet: Worksheet, columns: Iterable[Column], rows: Iterable[list]) -> None:
+def _write_table(
+    sheet: Worksheet, columns: Iterable[Column], rows: Iterable[list], minor_units: int = 2
+) -> None:
     columns = list(columns)
     sheet.append([column.header for column in columns])
     for cell in sheet[1]:
@@ -47,7 +51,8 @@ def _write_table(sheet: Worksheet, columns: Iterable[Column], rows: Iterable[lis
     for index, column in enumerate(columns, start=1):
         letter = get_column_letter(index)
         sheet.column_dimensions[letter].width = 48 if column.field == "explanation" else 20
-        number_format = {"money": schema.MONEY_FORMAT, "date": schema.DATE_FORMAT}.get(column.kind)
+        money_format = schema.MONEY_FORMATS.get(minor_units, schema.MONEY_FORMATS[2])
+        number_format = {"money": money_format, "date": schema.DATE_FORMAT}.get(column.kind)
         if number_format:
             for cell in sheet[letter][1:]:
                 cell.number_format = number_format
@@ -76,6 +81,7 @@ def _resolved_rows(records: list[ReconciledRecord]) -> list[list]:
 def export_audit_workbook(state: BatchState, filepath: Target) -> None:
     """Write the multi-sheet audit pack for ``state`` to a path or binary stream."""
     workbook = Workbook()
+    minor = state.currency.minor_units
     summary = workbook.active
     summary.title = schema.SUMMARY_SHEET
     for label, value in summary_rows(state):
@@ -91,20 +97,23 @@ def export_audit_workbook(state: BatchState, filepath: Target) -> None:
         (schema.ANOMALY_SHEET, MatchStatus.ANOMALY),
     ):
         rows = _report_rows(state.records, status, schema.REPORT_COLUMNS)
-        _write_table(workbook.create_sheet(title), schema.REPORT_COLUMNS, rows)
+        _write_table(workbook.create_sheet(title), schema.REPORT_COLUMNS, rows, minor)
 
     _write_table(
         workbook.create_sheet(schema.RESOLVED_SHEET),
         schema.REPORT_COLUMNS + schema.RESOLUTION_COLUMNS,
         _resolved_rows(state.records),
+        minor,
     )
     write_ledger_sheet(workbook.create_sheet(schema.LEDGER_SHEET), state.records)
     workbook.save(filepath)
 
 
 def write_ledger_sheet(sheet: Worksheet, transactions: Iterable[LedgerTransaction]) -> None:
+    transactions = list(transactions)
     rows = [[getattr(tx, column.field) for column in schema.LEDGER_COLUMNS] for tx in transactions]
-    _write_table(sheet, schema.LEDGER_COLUMNS, rows)
+    minor = get_currency(transactions[0].currency).minor_units if transactions else 2
+    _write_table(sheet, schema.LEDGER_COLUMNS, rows, minor)
 
 
 def export_template_workbook(transactions: Iterable[LedgerTransaction], filepath: Target) -> None:
@@ -159,13 +168,9 @@ def parse_ledger_workbook(filepath: Target | bytes) -> list[LedgerTransaction]:
 
         transactions, errors, seen = [], [], set()
         for number, cells in enumerate(rows, start=2):
-            # Checked before anything else, so blank rows and rows with data
-            # only outside the schema columns cannot keep the loop running.
+            # Checked first, so blank or out-of-schema rows cannot keep the loop running.
             if number > MAX_ROWS + 1:
-                errors.append(
-                    f"The sheet has more than {MAX_ROWS} rows. Blank and formatted rows "
-                    "count: delete the unused rows below the data."
-                )
+                errors.append(schema.TOO_MANY_ROWS)
                 break
             cells = tuple(cells[: len(expected)])
             if all(cell is None for cell in cells):
@@ -178,6 +183,12 @@ def parse_ledger_workbook(filepath: Target | bytes) -> list[LedgerTransaction]:
                 errors.append(f"Row {number}: duplicate TX ID '{transaction.tx_id}'.")
             seen.add(transaction.tx_id)
             transactions.append(transaction)
+        currencies = sorted({transaction.currency for transaction in transactions})
+        if len(currencies) > 1:
+            errors.append(
+                f"The workbook mixes currencies ({', '.join(currencies)}); "
+                "a batch is reconciled in one currency."
+            )
         if not transactions and not errors:
             errors.append("The sheet has no data rows.")
         if errors:

@@ -12,40 +12,26 @@ from decimal import Decimal
 from typing import Callable
 
 from . import config
+from .batch_models import BatchState, CurrencyInfo, default_tolerance, scenario_infos
+from .currencies import DEFAULT_CURRENCY, UnknownCurrencyError, get_currency
+from .errors import ConflictError, InvalidRequestError, NotFoundError, run_in_progress
+from .kpis import compute_kpis
 from .live_run import LiveRun
-from .matching import compute_kpis, reconcile
+from .matching import reconcile
 from .mock_ledgers import Scenario
 from .models import (
-    BatchState,
     LedgerTransaction,
     MatchStatus,
     ReconciledRecord,
     Resolution,
     ResolutionAction,
     RunState,
-    ScenarioInfo,
     ToleranceConfig,
 )
 from .pubsub import Broadcaster, StreamEvent
+from .resolutions import build_resolution
 
-
-class EngineError(Exception):
-    """Base class; the API layer maps subclasses to HTTP status codes."""
-
-
-class NotFoundError(EngineError):
-    pass
-
-
-class ConflictError(EngineError):
-    pass
-
-
-def default_tolerance() -> ToleranceConfig:
-    return ToleranceConfig(
-        amount_tolerance_gbp=config.DEFAULT_AMOUNT_TOLERANCE_GBP,
-        date_window_days=config.DEFAULT_DATE_WINDOW_DAYS,
-    )
+BatchLoader = Callable[[str], list[LedgerTransaction]]
 
 
 def _utc_now() -> datetime:
@@ -59,14 +45,16 @@ class ReconciliationEngine:
         entity: str,
         batch_id: str,
         data_notice: str,
-        transactions: list[LedgerTransaction],
+        load_batch: BatchLoader,
         scenarios: dict[str, Scenario],
+        currency: str = DEFAULT_CURRENCY,
         step_seconds: float = config.DEFAULT_STEP_SECONDS,
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         self._entity, self._batch_id, self._data_notice = entity, batch_id, data_notice
-        self._base = list(transactions)
+        self._load_batch = load_batch
         self._scenarios = scenarios
+        self._currency = get_currency(currency)
         self._clock = clock
         self._broadcaster = Broadcaster()
         self._sequence = 0
@@ -81,8 +69,9 @@ class ReconciliationEngine:
         self._load_defaults()
 
     def _load_defaults(self) -> None:
-        self._transactions = list(self._base)
-        self._tolerance = default_tolerance()
+        """The default batch and rules, in the active currency."""
+        self._transactions = self._load_batch(self._currency.code)
+        self._tolerance = default_tolerance(self._currency.code)
         self._resolutions: dict[str, Resolution] = {}
 
     # --- read side ---------------------------------------------------------
@@ -90,6 +79,10 @@ class ReconciliationEngine:
     @property
     def broadcaster(self) -> Broadcaster:
         return self._broadcaster
+
+    @property
+    def currency_code(self) -> str:
+        return self._currency.code
 
     @property
     def transactions(self) -> list[LedgerTransaction]:
@@ -117,18 +110,12 @@ class ReconciliationEngine:
             data_notice=self._data_notice,
             sequence=self._sequence,
             generated_at=self._clock(),
+            currency=CurrencyInfo.of(self._currency),
             tolerance=self._tolerance,
-            default_tolerance=default_tolerance(),
+            default_tolerance=default_tolerance(self._currency.code),
             kpis=compute_kpis(records),
             records=records,
-            scenarios=[
-                ScenarioInfo(
-                    code=s.code, anomaly_type=s.anomaly_type, label=s.label,
-                    description=s.description, tx_id=s.transaction.tx_id,
-                    active=s.code in active,
-                )
-                for s in self._scenarios.values()
-            ],
+            scenarios=scenario_infos(self._scenarios.values(), active),
             run=self._live.state,
         )
 
@@ -144,23 +131,43 @@ class ReconciliationEngine:
 
     def _require_idle(self) -> None:
         if self._live.is_running:
-            raise ConflictError("A reconciliation run is in progress. Wait for it to finish.")
+            raise run_in_progress()
 
-    def set_tolerance(self, amount_tolerance_gbp: Decimal, date_window_days: int) -> BatchState:
+    def set_currency(self, currency_code: str) -> BatchState:
+        """Load the default batch in another currency. Resolutions do not carry over."""
+        try:
+            currency = get_currency(currency_code)
+        except UnknownCurrencyError as error:
+            raise InvalidRequestError("UNKNOWN_CURRENCY", str(error)) from None
+        self._require_idle()
+        self._currency = currency
+        self._load_defaults()
+        self._live.clear()
+        return self.publish_state()
+
+    def set_tolerance(self, amount_tolerance: Decimal, date_window_days: int) -> BatchState:
+        limit = self._currency.max_tolerance
+        if amount_tolerance > limit:
+            raise InvalidRequestError(
+                "TOLERANCE_OUT_OF_RANGE",
+                f"Amount tolerance cannot exceed {self._currency.format(limit)}.",
+            )
         self._require_idle()
         self._tolerance = ToleranceConfig(
-            amount_tolerance_gbp=amount_tolerance_gbp, date_window_days=date_window_days
+            amount_tolerance=amount_tolerance, date_window_days=date_window_days
         )
         return self.publish_state()
 
     def inject(self, scenario_code: str) -> BatchState:
         scenario = self._scenarios.get(scenario_code.upper())
         if scenario is None:
-            raise NotFoundError(f"Unknown scenario code: {scenario_code}.")
+            raise NotFoundError("UNKNOWN_SCENARIO", f"Unknown scenario code: {scenario_code}.")
         self._require_idle()
-        if any(tx.tx_id == scenario.transaction.tx_id for tx in self._transactions):
-            raise ConflictError(f"Scenario {scenario.code} is already active in this batch.")
-        self._transactions.append(scenario.transaction)
+        if any(tx.tx_id == scenario.tx_id for tx in self._transactions):
+            raise ConflictError(
+                "SCENARIO_ACTIVE", f"Scenario {scenario.code} is already active in this batch."
+            )
+        self._transactions.append(scenario.transaction(self._currency.code))
         return self.publish_state()
 
     def reset(self) -> BatchState:
@@ -172,19 +179,7 @@ class ReconciliationEngine:
     def resolve(self, tx_id: str, action: ResolutionAction, note: str) -> BatchState:
         self._require_idle()  # a run replays verdicts computed when it started
         record = next((r for r in self.records() if r.tx_id == tx_id), None)
-        if record is None:
-            raise NotFoundError(f"Unknown transaction: {tx_id}.")
-        if record.status is MatchStatus.RESOLVED:
-            raise ConflictError(f"{tx_id} is already resolved; audit entries are immutable.")
-        if record.status is not MatchStatus.ANOMALY or record.anomaly_type is None:
-            raise ConflictError(f"{tx_id} is not an open anomaly.")
-        self._resolutions[tx_id] = Resolution(
-            action=action,
-            resolution_note=note,
-            resolved_at=self._clock(),
-            anomaly_type=record.anomaly_type,
-            variance_gbp=record.variance_gbp,
-        )
+        self._resolutions[tx_id] = build_resolution(record, tx_id, action, note, self._clock())
         return self.publish_state()
 
     # --- live run ----------------------------------------------------------

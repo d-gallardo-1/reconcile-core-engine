@@ -9,8 +9,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Path
 
 from ..engine import ReconciliationEngine
-from ..models import BatchState, RunState
-from .schemas import ResolveRequest, ToleranceRequest
+from ..batch_models import BatchState
+from ..models import RunState
+from .schemas import CurrencyRequest, ResolveRequest, ToleranceRequest
 
 _CODE = r"^[A-Za-z0-9-]{1,32}$"
 
@@ -18,13 +19,18 @@ _CODE = r"^[A-Za-z0-9-]{1,32}$"
 def build_reconcile_router(engine: ReconciliationEngine) -> APIRouter:
     router = APIRouter(tags=["reconcile"])
 
+    @router.post("/batches/currency", response_model=BatchState)
+    async def currency(body: CurrencyRequest) -> BatchState:
+        """Load the default batch in another currency."""
+        return engine.set_currency(body.currency)
+
     @router.post("/reconcile/run", response_model=RunState, status_code=202)
     async def run() -> RunState:
         return engine.start_run()
 
     @router.post("/reconcile/tolerance", response_model=BatchState)
     async def tolerance(body: ToleranceRequest) -> BatchState:
-        return engine.set_tolerance(body.amount_tolerance_gbp, body.date_window_days)
+        return engine.set_tolerance(body.amount_tolerance, body.date_window_days)
 
     @router.post("/reconcile/reset", response_model=BatchState)
     async def reset() -> BatchState:

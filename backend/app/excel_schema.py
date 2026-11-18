@@ -18,8 +18,15 @@ TOLERANCE_SHEET = "Tolerance_Matches"
 ANOMALY_SHEET = "Unresolved_Anomalies"
 RESOLVED_SHEET = "Resolved_Audit_Trail"
 
-MONEY_FORMAT = '#,##0.00;[Red]-#,##0.00'
+#: Number formats by decimal places of the batch currency.
+MONEY_FORMATS = {0: '#,##0;[Red]-#,##0', 2: '#,##0.00;[Red]-#,##0.00'}
 DATE_FORMAT = "yyyy-mm-dd"
+
+MAX_ROWS = 5000
+TOO_MANY_ROWS = (
+    f"The sheet has more than {MAX_ROWS} rows. Blank and formatted rows count: "
+    "delete the unused rows below the data."
+)
 
 
 @dataclass(frozen=True)
@@ -35,20 +42,21 @@ LEDGER_COLUMNS: tuple[Column, ...] = (
     Column("TX ID", "tx_id", "text", True, "Unique transaction identifier."),
     Column("Invoice Ref", "invoice_ref", "text", True, "Invoice or payment reference shared by the sources."),
     Column("Counterparty", "counterparty", "text", True, "Supplier or customer name."),
-    Column("ERP Amount GBP", "erp_amount_gbp", "money", False, "Source A: gross amount in the general ledger."),
+    Column("Currency", "currency", "text", True, "ISO 4217 code. One currency per workbook."),
+    Column("ERP Amount", "erp_amount", "money", False, "Source A: gross amount in the general ledger."),
     Column("ERP Date", "erp_date", "date", False, "Source A: posting date."),
     Column("VAT Rate", "vat_rate", "rate", False, "Source A: VAT rate as a fraction (0.20 = 20%)."),
-    Column("Bank Amount GBP", "bank_amount_gbp", "money", False, "Source B: amount per bank settlement."),
+    Column("Bank Amount", "bank_amount", "money", False, "Source B: amount per bank settlement."),
     Column("Bank Date", "bank_date", "date", False, "Source B: clearing date."),
     Column("Bank Settlements", "bank_settlement_count", "integer", True, "Source B: number of settlements found (0-9)."),
     Column("Tax Status", "tax_status", "enum", True, "Source C: " + " | ".join(s.value for s in TaxStatus) + "."),
-    Column("Tax VAT Amount GBP", "tax_vat_amount_gbp", "money", False, "Source C: VAT amount held by the registry."),
+    Column("Tax VAT Amount", "tax_vat_amount", "money", False, "Source C: VAT amount held by the registry."),
     Column("Scenario Code", "scenario_code", "text", False, "Demo scenario that injected the row, if any."),
 )
 
 #: Report sheets: the input columns plus the verdict of the pipeline.
 REPORT_COLUMNS: tuple[Column, ...] = LEDGER_COLUMNS[:-1] + (
-    Column("Variance GBP", "variance_gbp", "money", True, "Bank total minus ERP amount."),
+    Column("Variance", "variance", "money", True, "Bank total minus ERP amount."),
     Column("Date Shift Days", "date_shift_days", "integer", False, "Bank date minus ERP date."),
     Column("Tax Check", "tax_check", "enum", True, "Registry comparison result."),
     Column("Classification", "status", "enum", True, "Pipeline verdict."),

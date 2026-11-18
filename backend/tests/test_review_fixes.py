@@ -3,48 +3,29 @@
 from __future__ import annotations
 
 import asyncio
-import io
 from datetime import date
 from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from openpyxl import Workbook
 
 from app.config import load_settings
 from app.engine import default_tolerance
 from app.excel_io import MAX_ROWS, WorkbookError, parse_ledger_workbook
-from app.excel_schema import LEDGER_COLUMNS, LEDGER_SHEET
 from app.main import build_engine, create_app
 from app.matching import reconcile
 from app.models import AnomalyType, LedgerTransaction, MatchStatus, TaxCheck, TaxStatus
 
-from .conftest import API
-
-GOOD = ["TX-1", "INV-1", "Acme Test Ltd", 120, "2026-11-02", 0.2, 120, "2026-11-02", 1, "REGISTERED", 20, None]
-
-
-def workbook_bytes(rows: list[list], extra_cell: tuple[int, int, object] | None = None) -> bytes:
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = LEDGER_SHEET
-    sheet.append([column.header for column in LEDGER_COLUMNS])
-    for row in rows:
-        sheet.append(row)
-    if extra_cell:
-        sheet.cell(row=extra_cell[0], column=extra_cell[1], value=extra_cell[2])
-    buffer = io.BytesIO()
-    workbook.save(buffer)
-    return buffer.getvalue()
+from .conftest import API, ledger_row, workbook_bytes
 
 
 @pytest.mark.parametrize(
     ("row", "fragment"),
     [
-        (GOOD[:3] + [1e30] + GOOD[4:], "'ERP Amount GBP': must be a number between"),
-        (GOOD[:6] + [-1e30] + GOOD[7:], "'Bank Amount GBP': must be a number between"),
-        (GOOD[:8] + ["abc"] + GOOD[9:], "'Bank Settlements': must be a whole number"),
-        (GOOD[:8] + ["1.0"] + GOOD[9:], "'Bank Settlements': must be a whole number"),
+        (ledger_row(erp_amount=1e30), "'ERP Amount': must be a number between"),
+        (ledger_row(bank_amount=-1e30), "'Bank Amount': must be a number between"),
+        (ledger_row(bank_settlement_count="abc"), "'Bank Settlements': must be a whole number"),
+        (ledger_row(bank_settlement_count="1.0"), "'Bank Settlements': must be a whole number"),
     ],
 )
 def test_out_of_range_cells_are_row_errors_not_crashes(client, row, fragment):
@@ -60,7 +41,7 @@ def test_out_of_range_cells_are_row_errors_not_crashes(client, row, fragment):
 def test_row_limit_counts_blank_rows_and_data_beyond_the_schema():
     # One far-away cell outside the 12 schema columns: every row up to it is blank
     # for the parser, and must still count against the limit.
-    content = workbook_bytes([GOOD], extra_cell=(MAX_ROWS + 500, 20, "x"))
+    content = workbook_bytes([ledger_row()], extra_cell=(MAX_ROWS + 500, 20, "x"))
     with pytest.raises(WorkbookError) as raised:
         parse_ledger_workbook(content)
     message = str(raised.value)
@@ -70,7 +51,7 @@ def test_row_limit_counts_blank_rows_and_data_beyond_the_schema():
 
 
 def _numbered_rows(count: int) -> list[list]:
-    return [[f"TX-{index}"] + GOOD[1:] for index in range(count)]
+    return [ledger_row(tx_id=f"TX-{index}") for index in range(count)]
 
 
 def test_a_sheet_with_exactly_the_row_limit_is_accepted():
@@ -85,16 +66,16 @@ def test_one_data_row_over_the_limit_is_refused():
 @pytest.mark.parametrize("cell", ["1", " 1 ", 1, 1.0])
 def test_whole_numbers_typed_as_text_are_accepted(cell):
     # Text-formatted numerals are common in hand-edited workbooks.
-    parsed = parse_ledger_workbook(workbook_bytes([GOOD[:8] + [cell] + GOOD[9:]]))
+    parsed = parse_ledger_workbook(workbook_bytes([ledger_row(bank_settlement_count=cell)]))
     assert parsed[0].bank_settlement_count == 1
 
 
 def _tx(**overrides) -> LedgerTransaction:
     values = dict(
-        tx_id="TX-1", invoice_ref="INV-1", counterparty="Acme Test Ltd",
-        erp_amount_gbp=Decimal("120.00"), erp_date=date(2026, 11, 2), vat_rate=Decimal("0.20"),
-        bank_amount_gbp=Decimal("120.00"), bank_date=date(2026, 11, 2), bank_settlement_count=1,
-        tax_status=TaxStatus.REGISTERED, tax_vat_amount_gbp=Decimal("20.00"),
+        tx_id="TX-1", invoice_ref="INV-1", counterparty="Acme Test Ltd", currency="GBP",
+        erp_amount=Decimal("120.00"), erp_date=date(2026, 11, 2), vat_rate=Decimal("0.20"),
+        bank_amount=Decimal("120.00"), bank_date=date(2026, 11, 2), bank_settlement_count=1,
+        tax_status=TaxStatus.REGISTERED, tax_vat_amount=Decimal("20.00"),
     )
     return LedgerTransaction(**{**values, **overrides})
 
@@ -110,7 +91,7 @@ def test_a_record_without_a_date_is_an_anomaly_with_an_explanation(missing):
 
 @pytest.mark.parametrize("registry_vat", [Decimal("20.00"), None])
 def test_a_missing_vat_rate_is_reported_as_missing_not_as_a_mismatch(registry_vat):
-    record = reconcile(_tx(vat_rate=None, tax_vat_amount_gbp=registry_vat), default_tolerance())
+    record = reconcile(_tx(vat_rate=None, tax_vat_amount=registry_vat), default_tolerance())
     assert record.tax_check is TaxCheck.RATE_MISSING
     assert record.status is MatchStatus.ANOMALY
     assert record.anomaly_type is AnomalyType.INCOMPLETE_SOURCE_DATA
@@ -118,7 +99,7 @@ def test_a_missing_vat_rate_is_reported_as_missing_not_as_a_mismatch(registry_va
 
 
 def test_a_real_vat_difference_is_still_a_mismatch():
-    record = reconcile(_tx(tax_vat_amount_gbp=Decimal("5.71")), default_tolerance())
+    record = reconcile(_tx(tax_vat_amount=Decimal("5.71")), default_tolerance())
     assert record.tax_check is TaxCheck.VAT_MISMATCH
     assert record.anomaly_type is AnomalyType.VAT_MISMATCH
 
@@ -159,7 +140,7 @@ def test_changes_are_refused_while_a_run_is_in_progress():
     with TestClient(create_app(engine)) as client:
         assert client.post(f"{API}/reconcile/run").json()["status"] == "RUNNING"
         note = {"resolution_note": "Checked.", "action": "APPROVE_VARIANCE"}
-        tolerance = {"amount_tolerance_gbp": 1, "date_window_days": 1}
+        tolerance = {"amount_tolerance": 1, "date_window_days": 1}
         for path, body in (
             ("/reconcile/run", None),
             ("/reconcile/reset", None),

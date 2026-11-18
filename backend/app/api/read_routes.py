@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 
 from .. import __version__
 from ..engine import ReconciliationEngine
-from ..models import BatchState
+from ..batch_models import BatchState
 from ..sse import event_stream
 from .schemas import HealthResponse
 

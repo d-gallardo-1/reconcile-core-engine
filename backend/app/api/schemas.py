@@ -6,15 +6,22 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..config import MAX_AMOUNT_TOLERANCE_GBP, MAX_DATE_WINDOW_DAYS
+from ..config import MAX_DATE_WINDOW_DAYS
 from ..models import ResolutionAction
 
 
 class ToleranceRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    amount_tolerance_gbp: Decimal = Field(ge=0, le=MAX_AMOUNT_TOLERANCE_GBP)
+    #: The upper bound depends on the batch currency and is checked by the engine.
+    amount_tolerance: Decimal = Field(ge=0, max_digits=15, decimal_places=2)
     date_window_days: int = Field(ge=0, le=MAX_DATE_WINDOW_DAYS, strict=True)
+
+
+class CurrencyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    currency: str = Field(pattern=r"^[A-Za-z]{3}$")
 
 
 class ResolveRequest(BaseModel):

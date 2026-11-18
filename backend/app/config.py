@@ -5,17 +5,12 @@ from __future__ import annotations
 import math
 import os
 from dataclasses import dataclass
-from decimal import Decimal
 
 API_PREFIX = "/api/v1"
 
-#: Default matching rules. With these values the three tolerance cases of the
-#: synthetic batch (wire fee, clearing lag, FX rounding) are auto-matched.
-DEFAULT_AMOUNT_TOLERANCE_GBP = Decimal("15.00")
+#: Default date window. The amount tolerance depends on the batch currency
+#: and lives in ``currencies``.
 DEFAULT_DATE_WINDOW_DAYS = 2
-
-#: Upper bounds accepted by the API; the UI sliders use the same range.
-MAX_AMOUNT_TOLERANCE_GBP = Decimal("50.00")
 MAX_DATE_WINDOW_DAYS = 5
 
 #: Largest workbook accepted by the template verifier.

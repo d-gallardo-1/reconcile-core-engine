@@ -12,7 +12,7 @@ from app.excel_schema import LEDGER_COLUMNS, LEDGER_SHEET
 from app.mock_ledgers import SCENARIOS, base_transactions
 from app.models import ResolutionAction
 
-from .conftest import API
+from .conftest import API, ledger_row, workbook_bytes
 
 SHEETS = [
     "Summary", "Exact_Matches", "Tolerance_Matches",
@@ -32,7 +32,7 @@ def test_round_trip_returns_identical_transactions(engine, tmp_path):
 
     parsed = parse_ledger_workbook(path)
 
-    expected = base_transactions() + [s.transaction for s in SCENARIOS.values()]
+    expected = base_transactions() + [s.transaction("GBP") for s in SCENARIOS.values()]
     assert parsed == expected
     assert parsed == engine.transactions
 
@@ -85,32 +85,28 @@ def test_template_verifier_accepts_the_template_and_keeps_the_batch(client):
     assert client.get(f"{API}/batches/current").json()["kpis"]["total_records"] == 15
 
 
-def _workbook_bytes(rows: list[list], header: list[str] | None = None) -> bytes:
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = LEDGER_SHEET
-    sheet.append(header or [column.header for column in LEDGER_COLUMNS])
-    for row in rows:
-        sheet.append(row)
-    buffer = io.BytesIO()
-    workbook.save(buffer)
-    return buffer.getvalue()
-
-
-GOOD = ["TX-1", "INV-1", "Acme Test Ltd", 120, "2026-11-02", 0.2, 120, "2026-11-02", 1, "REGISTERED", 20, None]
-
-
 @pytest.mark.parametrize(
     ("content", "fragment"),
     [
         (b"not a workbook", "not a readable .xlsx"),
-        (_workbook_bytes([GOOD], header=["TX"]), "Header row must be exactly"),
-        (_workbook_bytes([]), "no data rows"),
-        (_workbook_bytes([GOOD, GOOD]), "duplicate TX ID"),
-        (_workbook_bytes([[None] + GOOD[1:]]), "'TX ID': value is required"),
-        (_workbook_bytes([GOOD[:3] + ["abc"] + GOOD[4:]]), "'ERP Amount GBP': must be a number"),
-        (_workbook_bytes([GOOD[:4] + ["02/11/2026"] + GOOD[5:]]), "'ERP Date': must be a date"),
-        (_workbook_bytes([GOOD[:9] + ["PAID"] + GOOD[10:]]), "tax_status"),
+        (workbook_bytes([ledger_row()], header=["TX"]), "Header row must be exactly"),
+        (workbook_bytes([]), "no data rows"),
+        (workbook_bytes([ledger_row(), ledger_row()]), "duplicate TX ID"),
+        (workbook_bytes([ledger_row(tx_id=None)]), "'TX ID': value is required"),
+        (workbook_bytes([ledger_row(erp_amount="abc")]), "'ERP Amount': must be a number"),
+        (workbook_bytes([ledger_row(erp_date="02/11/2026")]), "'ERP Date': must be a date"),
+        (workbook_bytes([ledger_row(tax_status="PAID")]), "tax_status"),
+        (workbook_bytes([ledger_row(currency="XXX")]), "Unsupported currency 'XXX'"),
+        (workbook_bytes([ledger_row(currency=None)]), "'Currency': value is required"),
+        (
+            workbook_bytes([ledger_row(), ledger_row(tx_id="TX-2", currency="EUR")]),
+            "mixes currencies (EUR, GBP)",
+        ),
+        # Yen has no decimals: an amount with a fraction does not fit the currency.
+        (
+            workbook_bytes([ledger_row(currency="JPY", erp_amount=120.5)]),
+            "erp_amount has more decimals than JPY allows",
+        ),
     ],
 )
 def test_parser_reports_malformed_workbooks(client, content, fragment):

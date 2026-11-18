@@ -7,7 +7,16 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    model_validator,
+)
+
+from .currencies import get_currency
 
 PENNY = Decimal("0.01")
 
@@ -85,22 +94,34 @@ class LedgerTransaction(BaseModel):
     tx_id: str = Field(min_length=1, max_length=32)
     invoice_ref: str = Field(min_length=1, max_length=64)
     counterparty: str = Field(min_length=1, max_length=120)
+    #: ISO 4217 code. One currency per batch; every amount of the row is in it.
+    currency: str = Field(min_length=3, max_length=3)
     # Source A: ERP general ledger (gross amount, VAT included).
-    erp_amount_gbp: Money | None = None
+    erp_amount: Money | None = None
     erp_date: date | None = None
     vat_rate: Rate | None = None
     # Source B: bank settlement feed. The amount is per settlement.
-    bank_amount_gbp: Money | None = None
+    bank_amount: Money | None = None
     bank_date: date | None = None
     bank_settlement_count: int = Field(default=0, ge=0, le=9)
     # Source C: tax/VAT registry.
     tax_status: TaxStatus = TaxStatus.NOT_REGISTERED
-    tax_vat_amount_gbp: Money | None = None
+    tax_vat_amount: Money | None = None
     scenario_code: str | None = Field(default=None, max_length=16)
+
+    @model_validator(mode="after")
+    def _amounts_fit_the_currency(self) -> LedgerTransaction:
+        currency = get_currency(self.currency)  # raises ValueError when unsupported
+        object.__setattr__(self, "currency", currency.code)
+        for name in ("erp_amount", "bank_amount", "tax_vat_amount"):
+            amount = getattr(self, name)
+            if amount is not None and amount != currency.round(amount):
+                raise ValueError(f"{name} has more decimals than {currency.code} allows")
+        return self
 
 
 class ToleranceConfig(BaseModel):
-    amount_tolerance_gbp: Money
+    amount_tolerance: Money
     date_window_days: int
 
 
@@ -109,7 +130,7 @@ class Resolution(BaseModel):
     resolution_note: str
     resolved_at: datetime
     anomaly_type: AnomalyType
-    variance_gbp: Money
+    variance: Money
 
 
 class ReconciledRecord(LedgerTransaction):
@@ -118,32 +139,14 @@ class ReconciledRecord(LedgerTransaction):
     status: MatchStatus
     matched_in_pass: int
     anomaly_type: AnomalyType | None = None
-    variance_gbp: Money
+    variance: Money
     date_shift_days: int | None = None
     tax_check: TaxCheck
+    #: English sentence (fallback and audit pack); the UI translates the code.
     explanation: str
+    explanation_code: str
+    explanation_params: dict[str, float | int | str] = Field(default_factory=dict)
     resolution: Resolution | None = None
-
-
-class Kpis(BaseModel):
-    total_records: int
-    total_ledger_volume_gbp: Money
-    exact_count: int
-    tolerance_count: int
-    anomaly_count: int
-    resolved_count: int
-    match_rate_pct: float
-    net_unreconciled_variance_gbp: Money
-    gross_unreconciled_exposure_gbp: Money
-
-
-class ScenarioInfo(BaseModel):
-    code: str
-    anomaly_type: AnomalyType
-    label: str
-    description: str
-    tx_id: str
-    active: bool
 
 
 class RunState(BaseModel):
@@ -170,19 +173,3 @@ class ReconciliationProgress(BaseModel):
     tx_id: str | None = None
     decided: bool = False
     classification: MatchStatus | None = None
-
-
-class BatchState(BaseModel):
-    """Full snapshot sent by ``/batches/current`` and by every SSE state event."""
-
-    entity: str
-    batch_id: str
-    data_notice: str
-    sequence: int
-    generated_at: datetime
-    tolerance: ToleranceConfig
-    default_tolerance: ToleranceConfig
-    kpis: Kpis
-    records: list[ReconciledRecord]
-    scenarios: list[ScenarioInfo]
-    run: RunState

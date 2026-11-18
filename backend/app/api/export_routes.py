@@ -49,7 +49,7 @@ def build_export_router(engine: ReconciliationEngine) -> APIRouter:
     @router.get("/export/template")
     async def export_template() -> Response:
         buffer = io.BytesIO()
-        export_template_workbook(base_transactions()[:3], buffer)
+        export_template_workbook(base_transactions(engine.currency_code)[:3], buffer)
         return _download(buffer.getvalue(), "ledger-input-template.xlsx")
 
     @router.get("/schema/ledger", response_model=LedgerSchemaResponse)

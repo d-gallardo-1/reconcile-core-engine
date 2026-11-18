@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 
+from .currencies import get_currency
+from .explanations import ExplanationCode as Code
+from .explanations import Params, json_params, render
 from .models import (
     AnomalyType,
-    Kpis,
     LedgerTransaction,
     MatchStatus,
     ReconciledRecord,
     TaxCheck,
     TaxStatus,
     ToleranceConfig,
-    to_pennies,
 )
 
 PASS_NAMES = {
@@ -22,7 +23,7 @@ PASS_NAMES = {
     2: "Fuzzy / Tolerance Match",
     3: "Unreconciled Anomaly Detection",
 }
-ZERO = Decimal("0.00")
+ZERO = Decimal(0)
 
 
 @dataclass(frozen=True)
@@ -30,18 +31,19 @@ class Verdict:
     status: MatchStatus
     matched_in_pass: int
     anomaly_type: AnomalyType | None
-    explanation: str
+    code: Code
+    params: Params = field(default_factory=dict)
 
 
-def expected_vat(gross: Decimal, rate: Decimal) -> Decimal:
-    """VAT contained in a gross amount, rounded to the penny."""
-    return to_pennies(gross * rate / (Decimal(1) + rate))
+def expected_vat(gross: Decimal, rate: Decimal, currency_code: str) -> Decimal:
+    """VAT contained in a gross amount, rounded to the currency's smallest unit."""
+    return get_currency(currency_code).round(gross * rate / (Decimal(1) + rate))
 
 
 def variance(tx: LedgerTransaction) -> Decimal:
     """Bank total minus ERP amount. A missing side counts as zero."""
-    bank_total = (tx.bank_amount_gbp or ZERO) * tx.bank_settlement_count
-    return to_pennies(bank_total - (tx.erp_amount_gbp or ZERO))
+    bank_total = (tx.bank_amount or ZERO) * tx.bank_settlement_count
+    return bank_total - (tx.erp_amount or ZERO)
 
 
 def date_shift_days(tx: LedgerTransaction) -> int | None:
@@ -55,20 +57,20 @@ def tax_check(tx: LedgerTransaction) -> TaxCheck:
         return TaxCheck.CERTIFICATE_MISSING
     if tx.tax_status is TaxStatus.NOT_REGISTERED:
         return TaxCheck.NOT_REGISTERED
-    if tx.erp_amount_gbp is None:
+    if tx.erp_amount is None:
         return TaxCheck.VERIFIED  # nothing to compare; pass 3 reports the missing ERP entry
     if tx.vat_rate is None:
         return TaxCheck.RATE_MISSING  # nothing can be checked without a rate
-    if tx.tax_vat_amount_gbp != expected_vat(tx.erp_amount_gbp, tx.vat_rate):
+    if tx.tax_vat_amount != expected_vat(tx.erp_amount, tx.vat_rate, tx.currency):
         return TaxCheck.VAT_MISMATCH
     return TaxCheck.VERIFIED
 
 
 def _three_way_complete(tx: LedgerTransaction) -> bool:
-    """All three sources hold exactly one consistent entry for the invoice."""
+    """All three sources hold exactly one consistent, dated entry for the invoice."""
     return (
-        tx.erp_amount_gbp is not None
-        and tx.bank_amount_gbp is not None
+        tx.erp_amount is not None
+        and tx.bank_amount is not None
         and tx.erp_date is not None
         and tx.bank_date is not None
         and tx.bank_settlement_count == 1
@@ -79,10 +81,7 @@ def _three_way_complete(tx: LedgerTransaction) -> bool:
 def pass_exact(tx: LedgerTransaction) -> Verdict | None:
     """Pass 1: identical amount and settlement date, tax registry verified."""
     if _three_way_complete(tx) and variance(tx) == ZERO and date_shift_days(tx) == 0:
-        return Verdict(
-            MatchStatus.EXACT_MATCH, 1, None,
-            "ERP, bank and tax registry agree on amount, VAT and settlement date.",
-        )
+        return Verdict(MatchStatus.EXACT_MATCH, 1, None, Code.EXACT)
     return None
 
 
@@ -91,65 +90,51 @@ def pass_tolerance(tx: LedgerTransaction, tolerance: ToleranceConfig) -> Verdict
     if not _three_way_complete(tx):
         return None
     delta, shift = variance(tx), date_shift_days(tx) or 0
-    if abs(delta) > tolerance.amount_tolerance_gbp or abs(shift) > tolerance.date_window_days:
+    if abs(delta) > tolerance.amount_tolerance or abs(shift) > tolerance.date_window_days:
         return None
-    parts = []
-    if delta != ZERO:
-        parts.append(f"amount variance {delta:+.2f} GBP")
-    if shift:
-        parts.append(f"settlement shifted {shift:+d} day(s)")
-    return Verdict(
-        MatchStatus.TOLERANCE_MATCH, 2, None,
-        f"Auto-matched within tolerance: {' and '.join(parts)}.",
-    )
+    if delta != ZERO and shift:
+        code, params = Code.TOLERANCE_AMOUNT_AND_DATE, json_params(delta=delta, shift=shift)
+    elif shift:
+        code, params = Code.TOLERANCE_DATE, json_params(shift=shift)
+    else:
+        code, params = Code.TOLERANCE_AMOUNT, json_params(delta=delta)
+    return Verdict(MatchStatus.TOLERANCE_MATCH, 2, None, code, params)
 
 
 def pass_anomaly(tx: LedgerTransaction, tolerance: ToleranceConfig) -> Verdict:
-    """Pass 3: everything left over is an anomaly; name the most specific cause."""
+    """Pass 3: everything left over is an anomaly; name the first cause that applies.
+
+    Order: structural causes, registry causes, a missing VAT rate, an amount
+    outside tolerance, a missing date, and last a date outside the window.
+    """
     delta, shift, check = variance(tx), date_shift_days(tx), tax_check(tx)
-    if tx.erp_amount_gbp is None:
-        kind = AnomalyType.UNBOOKED_BANK_DEBIT
-        why = "Bank debit cleared with no matching ERP entry or VAT receipt."
-    elif tx.bank_amount_gbp is None or tx.bank_settlement_count == 0:
-        kind = AnomalyType.ORPHAN_ERP_ACCRUAL
-        why = "Recorded in the ERP ledger but no settlement found in the bank feed."
+    kind: AnomalyType
+    params: Params = {}
+    if tx.erp_amount is None:
+        kind, code = AnomalyType.UNBOOKED_BANK_DEBIT, Code.UNBOOKED_BANK_DEBIT
+    elif tx.bank_amount is None or tx.bank_settlement_count == 0:
+        kind, code = AnomalyType.ORPHAN_ERP_ACCRUAL, Code.ORPHAN_ERP_ACCRUAL
     elif tx.bank_settlement_count > 1:
-        kind = AnomalyType.DUPLICATE_SETTLEMENT
-        why = (
-            f"Settled {tx.bank_settlement_count} times in the bank feed against "
-            f"one ERP entry ({delta:+.2f} GBP overpayment exposure)."
-        )
+        kind, code = AnomalyType.DUPLICATE_SETTLEMENT, Code.DUPLICATE_SETTLEMENT
+        params = json_params(count=tx.bank_settlement_count, delta=delta)
     elif check is TaxCheck.CERTIFICATE_MISSING:
-        kind = AnomalyType.WITHHOLDING_GAP
-        why = (
-            f"Bank settled {delta:+.2f} GBP against the ERP amount and the tax "
-            "registry holds no retention certificate."
-        )
+        kind, code = AnomalyType.WITHHOLDING_GAP, Code.WITHHOLDING_GAP
+        params = json_params(delta=delta)
     elif check is TaxCheck.NOT_REGISTERED:
-        kind = AnomalyType.MISSING_TAX_RECORD
-        why = "Invoice is missing from the tax/VAT registry."
+        kind, code = AnomalyType.MISSING_TAX_RECORD, Code.MISSING_TAX_RECORD
     elif check is TaxCheck.VAT_MISMATCH:
-        kind = AnomalyType.VAT_MISMATCH
-        why = "VAT recorded in the tax registry differs from the ERP VAT rate."
+        kind, code = AnomalyType.VAT_MISMATCH, Code.VAT_MISMATCH
     elif check is TaxCheck.RATE_MISSING:
-        kind = AnomalyType.INCOMPLETE_SOURCE_DATA
-        why = "The ERP entry has no VAT rate, so the registry VAT cannot be checked."
-    elif abs(delta) > tolerance.amount_tolerance_gbp:
-        kind = AnomalyType.AMOUNT_VARIANCE
-        why = (
-            f"Amount variance {delta:+.2f} GBP exceeds the "
-            f"{tolerance.amount_tolerance_gbp:.2f} GBP tolerance."
-        )
+        kind, code = AnomalyType.INCOMPLETE_SOURCE_DATA, Code.VAT_RATE_MISSING
+    elif abs(delta) > tolerance.amount_tolerance:
+        kind, code = AnomalyType.AMOUNT_VARIANCE, Code.AMOUNT_OUTSIDE_TOLERANCE
+        params = json_params(delta=delta, tolerance=tolerance.amount_tolerance)
     elif shift is None:
-        kind = AnomalyType.INCOMPLETE_SOURCE_DATA
-        why = "A posting or clearing date is missing, so the settlement cannot be dated."
+        kind, code = AnomalyType.INCOMPLETE_SOURCE_DATA, Code.DATE_MISSING
     else:
-        kind = AnomalyType.SETTLEMENT_DATE_SHIFT
-        why = (
-            f"Settlement shifted {shift:+d} day(s), outside the "
-            f"{tolerance.date_window_days}-day window."
-        )
-    return Verdict(MatchStatus.ANOMALY, 3, kind, why)
+        kind, code = AnomalyType.SETTLEMENT_DATE_SHIFT, Code.DATE_OUTSIDE_WINDOW
+        params = json_params(shift=shift, window=tolerance.date_window_days)
+    return Verdict(MatchStatus.ANOMALY, 3, kind, code, params)
 
 
 def classify(tx: LedgerTransaction, tolerance: ToleranceConfig) -> Verdict:
@@ -163,27 +148,10 @@ def reconcile(tx: LedgerTransaction, tolerance: ToleranceConfig) -> ReconciledRe
         status=verdict.status,
         matched_in_pass=verdict.matched_in_pass,
         anomaly_type=verdict.anomaly_type,
-        variance_gbp=variance(tx),
+        variance=variance(tx),
         date_shift_days=date_shift_days(tx),
         tax_check=tax_check(tx),
-        explanation=verdict.explanation,
-    )
-
-
-def compute_kpis(records: list[ReconciledRecord]) -> Kpis:
-    def count(status: MatchStatus) -> int:
-        return sum(1 for record in records if record.status is status)
-
-    open_variances = [r.variance_gbp for r in records if r.status is MatchStatus.ANOMALY]
-    matched = count(MatchStatus.EXACT_MATCH) + count(MatchStatus.TOLERANCE_MATCH)
-    return Kpis(
-        total_records=len(records),
-        total_ledger_volume_gbp=sum((r.erp_amount_gbp or ZERO for r in records), ZERO),
-        exact_count=count(MatchStatus.EXACT_MATCH),
-        tolerance_count=count(MatchStatus.TOLERANCE_MATCH),
-        anomaly_count=count(MatchStatus.ANOMALY),
-        resolved_count=count(MatchStatus.RESOLVED),
-        match_rate_pct=round(100 * matched / len(records), 1) if records else 0.0,
-        net_unreconciled_variance_gbp=sum(open_variances, ZERO),
-        gross_unreconciled_exposure_gbp=sum((abs(v) for v in open_variances), ZERO),
+        explanation=render(verdict.code, verdict.params, get_currency(tx.currency)),
+        explanation_code=verdict.code.value,
+        explanation_params=verdict.params,
     )

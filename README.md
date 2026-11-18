@@ -243,6 +243,13 @@ Deliberately not built:
   Chinese and Japanese texts were machine-written and have not been reviewed by native
   speakers.
 
+## Contact
+
+Built by Dario Gallardo. Questions, feedback and collaboration are welcome:
+
+- LinkedIn: [linkedin.com/in/dario-gallardo-0b1654304](https://www.linkedin.com/in/dario-gallardo-0b1654304/)
+- Bugs and suggestions: [open an issue](https://github.com/d-gallardo-1/reconcile-core-engine/issues)
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

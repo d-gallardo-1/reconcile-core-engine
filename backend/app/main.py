@@ -18,6 +18,7 @@ from .api.errors import install_error_handlers
 from .api.export_routes import build_export_router
 from .api.read_routes import build_read_router
 from .api.reconcile_routes import build_reconcile_router
+from .api.upload_routes import build_upload_router
 from .config import API_PREFIX, DEFAULT_STEP_SECONDS, Settings, load_settings
 from .currencies import DEFAULT_CURRENCY
 from .engine import ReconciliationEngine
@@ -83,6 +84,7 @@ def create_app(
     app.include_router(build_read_router(engine), prefix=API_PREFIX)
     app.include_router(build_reconcile_router(engine), prefix=API_PREFIX)
     app.include_router(build_export_router(engine), prefix=API_PREFIX)
+    app.include_router(build_upload_router(engine), prefix=API_PREFIX)
     return app
 
 

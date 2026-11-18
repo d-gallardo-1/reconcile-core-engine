@@ -11,7 +11,8 @@ from decimal import Decimal
 from typing import Callable
 
 from . import config
-from .batch_models import BatchState, CurrencyInfo, default_tolerance, scenario_infos
+from .batch_models import BatchSource, BatchState, CurrencyInfo
+from .batch_models import default_tolerance, scenario_infos
 from .currencies import DEFAULT_CURRENCY, Currency, UnknownCurrencyError, get_currency
 from .errors import ConflictError, InvalidRequestError, NotFoundError, run_in_progress
 from .tolerance import TolerancePreview, build_preview, check_tolerance
@@ -19,17 +20,10 @@ from .kpis import compute_kpis
 from .live_run import LiveRun
 from .matching import reconcile
 from .mock_ledgers import Scenario
-from .models import (
-    LedgerTransaction,
-    MatchStatus,
-    ReconciledRecord,
-    Resolution,
-    ResolutionAction,
-    RunState,
-    ToleranceConfig,
-)
+from .models import LedgerTransaction, ReconciledRecord, Resolution, ResolutionAction
+from .models import RunState, ToleranceConfig
 from .pubsub import Broadcaster, StreamEvent
-from .resolutions import build_resolutions
+from .resolutions import build_resolutions, with_resolutions
 
 BatchLoader = Callable[[str], list[LedgerTransaction]]
 
@@ -70,9 +64,12 @@ class ReconciliationEngine:
 
     def _load_defaults(self, currency: Currency) -> None:
         """Default batch and rules in ``currency``; loaded first, so a failure changes nothing."""
-        transactions = self._load_batch(currency.code)
-        self._currency = currency
-        self._transactions = transactions
+        self._use_batch(currency, self._load_batch(currency.code), BatchSource())
+
+    def _use_batch(
+        self, currency: Currency, transactions: list[LedgerTransaction], source: BatchSource
+    ) -> None:
+        self._currency, self._transactions, self._source = currency, transactions, source
         self._tolerance = default_tolerance(currency.code)
         self._resolutions: dict[str, Resolution] = {}
 
@@ -92,17 +89,9 @@ class ReconciliationEngine:
 
     def records(self, tolerance: ToleranceConfig | None = None) -> list[ReconciledRecord]:
         """The batch reconciled under the active rules, or under ``tolerance``."""
-        records = []
-        for tx in self._transactions:
-            record = reconcile(tx, tolerance or self._tolerance)
-            resolution = self._resolutions.get(tx.tx_id)
-            if resolution is not None:
-                # An auditor's decision is final: it survives later rule changes.
-                record = record.model_copy(
-                    update={"status": MatchStatus.RESOLVED, "resolution": resolution}
-                )
-            records.append(record)
-        return records
+        rules = tolerance or self._tolerance
+        reconciled = [reconcile(tx, rules) for tx in self._transactions]
+        return with_resolutions(reconciled, self._resolutions)
 
     def snapshot(self) -> BatchState:
         records = self.records()
@@ -112,6 +101,7 @@ class ReconciliationEngine:
             batch_id=self._batch_id,
             data_notice=self._data_notice,
             sequence=self._sequence,
+            source=self._source,
             generated_at=self._clock(),
             currency=CurrencyInfo.of(self._currency),
             tolerance=self._tolerance,
@@ -144,6 +134,14 @@ class ReconciliationEngine:
             raise InvalidRequestError("UNKNOWN_CURRENCY", str(error)) from None
         self._require_idle()
         self._load_defaults(currency)
+        self._live.clear()
+        return self.publish_state()
+
+    def load_uploaded(self, transactions: list[LedgerTransaction], label: str) -> BatchState:
+        """Replace the batch with parsed workbook rows (one currency, already validated)."""
+        self._require_idle()
+        source = BatchSource(kind="UPLOADED", label=label, loaded_at=self._clock())
+        self._use_batch(get_currency(transactions[0].currency), list(transactions), source)
         self._live.clear()
         return self.publish_state()
 

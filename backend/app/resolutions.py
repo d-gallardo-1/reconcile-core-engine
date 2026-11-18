@@ -51,3 +51,18 @@ def build_resolutions(
         )
         for record in selected
     }
+
+
+def with_resolutions(
+    records: list[ReconciledRecord], resolutions: dict[str, Resolution]
+) -> list[ReconciledRecord]:
+    """Mark the records an auditor decided on. A decision is final: it survives
+    later rule changes, whatever the rules would say about the record now."""
+    return [
+        record.model_copy(
+            update={"status": MatchStatus.RESOLVED, "resolution": resolutions[record.tx_id]}
+        )
+        if record.tx_id in resolutions
+        else record
+        for record in records
+    ]

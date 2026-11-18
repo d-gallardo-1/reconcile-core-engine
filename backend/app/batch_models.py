@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Literal
 
 from pydantic import BaseModel
 
@@ -58,6 +58,15 @@ class CurrencyInfo(BaseModel):
         )
 
 
+class BatchSource(BaseModel):
+    """Where the active batch came from."""
+
+    kind: Literal["SYNTHETIC", "UPLOADED"] = "SYNTHETIC"
+    #: Display name of an uploaded workbook; ``None`` for the synthetic batch.
+    label: str | None = None
+    loaded_at: datetime | None = None
+
+
 class BatchState(BaseModel):
     """Full snapshot sent by ``/batches/current`` and by every SSE state event."""
 
@@ -66,6 +75,7 @@ class BatchState(BaseModel):
     data_notice: str
     sequence: int
     generated_at: datetime
+    source: BatchSource
     currency: CurrencyInfo
     available_currencies: list[str] = list(CURRENCIES)
     tolerance: ToleranceConfig

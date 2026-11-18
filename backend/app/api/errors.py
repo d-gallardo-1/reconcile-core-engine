@@ -17,4 +17,7 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(EngineError)
     async def _engine_error(_: Request, error: EngineError) -> JSONResponse:
         status = _STATUS.get(type(error), 400)
-        return JSONResponse(status_code=status, content={"detail": str(error), "code": error.code})
+        content: dict[str, object] = {"detail": str(error), "code": error.code}
+        if error.details is not None:
+            content["errors"] = error.details
+        return JSONResponse(status_code=status, content=content)

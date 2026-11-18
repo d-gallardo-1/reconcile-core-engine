@@ -117,12 +117,21 @@ export interface CurrencyInfo {
   amount_tolerance_step: number;
 }
 
+/** Where the active batch came from. */
+export interface BatchSource {
+  kind: 'SYNTHETIC' | 'UPLOADED';
+  /** Display name of an uploaded workbook; null for the synthetic batch. */
+  label: string | null;
+  loaded_at: string | null;
+}
+
 export interface BatchState {
   entity: string;
   batch_id: string;
   data_notice: string;
   sequence: number;
   generated_at: string;
+  source: BatchSource;
   currency: CurrencyInfo;
   available_currencies: string[];
   tolerance: ToleranceConfig;

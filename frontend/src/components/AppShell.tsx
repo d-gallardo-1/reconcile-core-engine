@@ -1,10 +1,11 @@
-import { Languages, LayoutDashboard, Workflow } from 'lucide-react';
+import { Languages, LayoutDashboard, ShieldCheck, Workflow } from 'lucide-react';
 import { useCallback, useId, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { LOCALES } from '../i18n/locales';
 import { navigationOrder, neighbours } from '../lib/navigation';
 import type { BatchState, LiveRun, StreamStatus } from '../types/reconciliation';
 import { AnomalyResolutionPanel } from './AnomalyResolutionPanel';
+import { AuditTrailView } from './AuditTrailView';
 import { ExposurePanel } from './ExposurePanel';
 import { RulePipelineInspector } from './RulePipelineInspector';
 import { ThreeWayMatchTable } from './ThreeWayMatchTable';
@@ -13,6 +14,7 @@ import { TopAuditMetrics } from './TopAuditMetrics';
 
 const VIEWS = [
   { id: 'cockpit', label: 'nav.cockpit', icon: LayoutDashboard },
+  { id: 'audit', label: 'nav.audit', icon: ShieldCheck },
   { id: 'rules', label: 'nav.rules', icon: Workflow },
 ] as const;
 type View = (typeof VIEWS)[number]['id'];
@@ -52,7 +54,9 @@ export function AppShell({ state, status, liveRun }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <p className="rounded border border-audited/40 bg-audited/10 px-3 py-1.5 text-xs font-medium text-amber-200">
-            {t('app.demoBadge')}
+            {state?.source.kind === 'UPLOADED'
+              ? t('app.uploadedBadge', { label: state.source.label ?? '' })
+              : t('app.demoBadge')}
           </p>
           <label htmlFor={languageId} className="flex items-center gap-2 text-sm text-slate-300">
             <Languages aria-hidden="true" className="h-4 w-4 text-slate-500" />
@@ -110,6 +114,8 @@ export function AppShell({ state, status, liveRun }: Props) {
                 onShownChange={setShownIds}
               />
             </>
+          ) : view === 'audit' ? (
+            <AuditTrailView state={state} onOpen={setOpenTxId} onShownChange={setShownIds} />
           ) : (
             <RulePipelineInspector state={state} />
           )}

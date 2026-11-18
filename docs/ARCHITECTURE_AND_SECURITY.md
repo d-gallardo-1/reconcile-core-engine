@@ -110,7 +110,8 @@ Controls that exist in this repository:
 | Hardened XML parsing for workbooks (defusedxml), read-only parsing, 5,000-row limit that also counts blank and formatted rows (the error says so), bounded numeric values | `backend/app/excel_io.py`, `backend/app/excel_schema.py` |
 | Workbook parsing runs off the event loop, so an upload does not stall the stream | `backend/app/api/export_routes.py` |
 | Spreadsheet formula injection: text starting with `=`, `+`, `-` or `@` is stored as text | `backend/app/excel_schema.py` |
-| Uploaded workbooks are verified and discarded; they never replace the active batch | `backend/app/api/export_routes.py` |
+| Verification never changes the batch. Loading a workbook is a separate, explicit request; an invalid one is refused whole and the batch is kept | `backend/app/api/upload_routes.py` |
+| The name shown for a loaded workbook is stripped of control characters and cut to 80 characters before it is broadcast | `backend/app/api/upload_routes.py` |
 | Exact dependency versions, lockfile for the frontend, monthly Dependabot | `backend/requirements.txt`, `frontend/package-lock.json`, `.github/dependabot.yml` |
 
 ## 7. What a real deployment would need
@@ -125,7 +126,10 @@ These are open on purpose, and none of them is solved here:
 - **Persistence and recovery.** A restart returns to the default batch. A real system
   needs a database, backups and a tested restore.
 - **TLS.** The demo serves plain HTTP on localhost. Anything beyond that needs HTTPS.
-- **Rate limiting** on the run, export and verification endpoints.
+- **Rate limiting** on the run, export, verification and upload endpoints.
+- **Isolation of loaded data.** A loaded workbook becomes the one shared batch: every
+  connected client sees it and any of them can replace or reset it. Real use needs
+  per-user or per-tenant batches behind authentication.
 - **A bound on decompressed workbook size.** The verifier limits the upload to 2 MB and
   the rows it reads, but a highly compressible file can still expand to much more than
   that in memory before those limits apply.

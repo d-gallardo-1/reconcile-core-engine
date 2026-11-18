@@ -60,8 +60,13 @@ cannot be edited afterwards.
   previous and next record shown in the table, following its filter, search and order.
 - **Export the .xlsx audit pack** (`Summary`, `Exact_Matches`, `Tolerance_Matches`,
   `Unresolved_Anomalies`, `Resolved_Audit_Trail`, `Ledger_Input`).
-- In **Rule Engine & Schema Inspector**, download the input template and verify a
-  workbook against the schema.
+- In **Rule Engine & Schema Inspector**, download the input template, verify a workbook
+  against the schema and, if it is valid, **load it as the active batch**. The batch
+  then takes the workbook's currency. See the warning under [Honest scope](#honest-scope).
+- Actions that replace the batch (reset, currency change, loading a workbook) **ask
+  first** when there is something to lose, and say what: decisions, scenarios, an upload.
+- **Audit Trail** lists every decision recorded in the batch, newest first.
+- On a **narrow screen** the table becomes cards with a sort menu; nothing scrolls sideways.
 
 The default batch holds 15 transactions: 9 exact matches, 3 tolerance matches and 3
 anomalies, at the default tolerances (±15.00 in GBP, scaled for other currencies, and
@@ -172,6 +177,7 @@ FastAPI, single worker
 | GET | `/export/template` | Download the `Ledger_Input` template |
 | GET | `/schema/ledger` | Columns of the input sheet |
 | POST | `/template/verify` | Validate a workbook (raw body, 2 MB limit); read-only |
+| POST | `/batches/upload` | Load a workbook as the active batch (raw body, 2 MB limit; optional `X-Batch-Label` header). 422 with every problem listed when it is not valid |
 
 More detail, including the security posture and what a real deployment would need:
 [docs/ARCHITECTURE_AND_SECURITY.md](docs/ARCHITECTURE_AND_SECURITY.md).
@@ -198,8 +204,11 @@ Deliberately not built:
 - **No authentication or user identity.** A resolution records *when*, not *who*.
 - **No persistence.** State lives in memory and is lost on restart; "immutable" means
   the API refuses to change a decision, not that it is stored in tamper-evident form.
-- **No real connectors.** Nothing reads from an ERP, a bank or a tax authority, and an
-  uploaded workbook is only verified, never loaded as the active batch.
+- **No real connectors.** Nothing reads from an ERP, a bank or a tax authority. A
+  workbook can be loaded by hand as the active batch, and that is all.
+- **Do not load confidential data.** A loaded batch is held in memory, is shown to
+  every browser connected to the engine, has no access control and is lost on restart.
+  The feature exists to try the engine with your own shape of data, using made-up rows.
 - **Simplified matching.** One row already pairs the three sources by invoice
   reference. Real reconciliation also has to find those pairs (many-to-one payments,
   partial settlements, missing references), which this demo does not attempt.

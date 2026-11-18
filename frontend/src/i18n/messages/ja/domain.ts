@@ -88,6 +88,7 @@ export const domain: DomainMessages = {
   'error.UNKNOWN_CURRENCY': 'この通貨はサポートされていません。',
   'error.TOLERANCE_OUT_OF_RANGE': '金額許容差がこの通貨の上限を超えています。',
   'error.TOLERANCE_DECIMALS': '金額許容差の小数桁数がこの通貨で使用できる桁数を超えています。',
+  'error.INVALID_WORKBOOK': 'このワークブックは読み込めません。表示された問題を確認してください。',
   'error.TIMEOUT': 'エンジンが時間内に応答しませんでした。接続を確認して、もう一度お試しください。',
   'error.UNREACHABLE': 'エンジンに接続できませんでした。',
   'error.GENERIC': 'リクエストに失敗しました。',

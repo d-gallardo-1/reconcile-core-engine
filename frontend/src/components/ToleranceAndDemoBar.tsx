@@ -1,6 +1,7 @@
 import { Coins, Download, FlaskConical, Play, RotateCcw } from 'lucide-react';
 import { useCallback, useId } from 'react';
 import { useAction } from '../hooks/useAction';
+import { useReplaceGuard } from '../hooks/useReplaceGuard';
 import { useI18n } from '../i18n/I18nProvider';
 import { api } from '../lib/api';
 import type { BatchState, LiveRun } from '../types/reconciliation';
@@ -11,6 +12,8 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
   const { t, tCode, fmt } = useI18n();
   const { busy, error, run, clearError } = useAction();
   const currencyId = useId();
+  // Reset and a currency change replace the batch: ask before work is lost.
+  const { guard, dialog } = useReplaceGuard(state);
   const running = state.run.status === 'RUNNING';
   const locked = busy || running;
 
@@ -34,7 +37,10 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
               className="field num"
               value={state.currency.code}
               disabled={locked}
-              onChange={(event) => void run(() => api.setCurrency(event.target.value))}
+              onChange={(event) => {
+                const code = event.target.value;
+                guard(() => void run(() => api.setCurrency(code)));
+              }}
             >
               {state.available_currencies.map((code) => (
                 <option key={code} value={code}>
@@ -80,7 +86,12 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
           );
         })}
         <span className="ml-auto flex flex-wrap gap-2">
-          <button type="button" className="btn" disabled={locked} onClick={() => void run(api.reset)}>
+          <button
+            type="button"
+            className="btn"
+            disabled={locked}
+            onClick={() => guard(() => void run(api.reset))}
+          >
             <RotateCcw aria-hidden="true" className="h-4 w-4" />
             {t('demo.reset')}
           </button>
@@ -100,6 +111,7 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
         </p>
       )}
       <RunProgress state={state} liveRun={liveRun} />
+      {dialog}
     </section>
   );
 }

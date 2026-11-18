@@ -81,7 +81,10 @@ export function RulePipelineInspector({ state }: { state: BatchState }) {
           {t('schema.title')}
           {schema ? ` · ${t('schema.sheet', { sheet: schema.sheet })}` : ''}
         </h2>
-        <TemplateVerifier maxUploadBytes={schema?.max_upload_bytes ?? DEFAULT_MAX_UPLOAD_BYTES} />
+        <TemplateVerifier
+          state={state}
+          maxUploadBytes={schema?.max_upload_bytes ?? DEFAULT_MAX_UPLOAD_BYTES}
+        />
         {schemaFailure && (
           <p role="alert" className="mt-4 text-sm text-red-300">
             {errorText(i18n, schemaFailure)}

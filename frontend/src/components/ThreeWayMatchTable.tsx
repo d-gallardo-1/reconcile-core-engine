@@ -6,8 +6,10 @@ import { FILTERS, type StatusFilter } from '../lib/statusMeta';
 import { applyView, nextSort, type Sort } from '../lib/tableView';
 import type { BatchState, LiveRun } from '../types/reconciliation';
 import { BulkResolveBar } from './BulkResolveBar';
+import { MatchCardList } from './MatchCardList';
 import { MatchRow } from './MatchRow';
 import { MatchTableHead } from './MatchTableHead';
+import { MobileSort } from './MobileSort';
 
 interface Props {
   state: BatchState;
@@ -98,11 +100,21 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Pr
         <p role="status" className="num text-xs text-slate-400">
           {t('table.count', { shown: fmt.integer(rows.length), total: fmt.integer(state.records.length) })}
         </p>
+        <MobileSort sort={sort} onChange={setSort} />
       </div>
 
       <BulkResolveBar selection={selection} onClear={() => setSelected(new Set())} />
 
-      <div className="overflow-x-auto">
+      <div className="lg:hidden">
+        <MatchCardList
+          rows={rows}
+          liveRun={liveRun}
+          selected={selected}
+          onToggle={(txId) => setSelected((current) => toggle(current, txId))}
+          onOpen={onOpen}
+        />
+      </div>
+      <div className="hidden overflow-x-auto lg:block">
         <table className="w-full min-w-[1020px] border-collapse text-sm">
           <MatchTableHead
             currencyCode={state.currency.code}
@@ -125,12 +137,12 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Pr
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && (
-          <p className="border-t border-edge p-6 text-center text-sm text-slate-400">
-            {query.trim() ? t('table.noMatch') : t('table.empty')}
-          </p>
-        )}
       </div>
+      {rows.length === 0 && (
+        <p className="border-t border-edge p-6 text-center text-sm text-slate-400">
+          {query.trim() ? t('table.noMatch') : t('table.empty')}
+        </p>
+      )}
     </section>
   );
 }

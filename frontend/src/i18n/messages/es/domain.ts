@@ -89,6 +89,7 @@ export const domain: DomainMessages = {
   'error.UNKNOWN_CURRENCY': 'Esta moneda no es compatible.',
   'error.TOLERANCE_OUT_OF_RANGE': 'La tolerancia de importe supera el límite de esta moneda.',
   'error.TOLERANCE_DECIMALS': 'La tolerancia de importe tiene más decimales de los que admite esta moneda.',
+  'error.INVALID_WORKBOOK': 'El libro no se puede cargar. Revise los problemas indicados.',
   'error.TIMEOUT': 'El motor no respondió a tiempo. Compruebe la conexión e inténtelo de nuevo.',
   'error.UNREACHABLE': 'No se pudo acceder al motor.',
   'error.GENERIC': 'La solicitud falló.',

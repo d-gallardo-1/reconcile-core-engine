@@ -18,6 +18,8 @@ export class ApiError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    /** Individual problems behind the error, for example one per workbook row. */
+    readonly details?: string[],
   ) {
     super(message);
   }
@@ -25,9 +27,10 @@ export class ApiError extends Error {
 
 async function failure(response: Response, fallback: string): Promise<ApiError> {
   try {
-    const body = (await response.json()) as { detail?: unknown; code?: unknown };
+    const body = (await response.json()) as { detail?: unknown; code?: unknown; errors?: unknown };
     const detail = typeof body.detail === 'string' ? body.detail : fallback;
-    return new ApiError(typeof body.code === 'string' ? body.code : 'GENERIC', detail);
+    const details = Array.isArray(body.errors) ? body.errors.map(String) : undefined;
+    return new ApiError(typeof body.code === 'string' ? body.code : 'GENERIC', detail, details);
   } catch {
     return new ApiError('GENERIC', fallback);
   }
@@ -95,6 +98,19 @@ export const api = {
     request<VerifyResult>('/template/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
+      body: file,
+    }),
+  /**
+   * Replaces the active batch with the workbook. The file name travels in a
+   * header, not in the URL, and only as a display label.
+   */
+  uploadBatch: (file: File) =>
+    request<BatchState>('/batches/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'X-Batch-Label': encodeURIComponent(file.name),
+      },
       body: file,
     }),
   exportExcelUrl: `${API_BASE}/export/excel`,

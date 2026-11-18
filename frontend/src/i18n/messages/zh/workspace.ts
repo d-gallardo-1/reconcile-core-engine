@@ -1,0 +1,31 @@
+// Simplified Chinese text for the batch workspace (see en/workspace.ts).
+import type { WorkspaceMessages } from '../types';
+
+export const workspace: WorkspaceMessages = {
+  'nav.audit': '审计轨迹',
+  'app.uploadedBadge': '已上传批次 · {label} · 仅保存在内存中',
+  'confirm.title': '要替换当前批次吗？',
+  'confirm.resolutions_one': '将丢弃 {count} 条审计决定。',
+  'confirm.resolutions_other': '将丢弃 {count} 条审计决定。',
+  'confirm.scenarios_one': '将移除 {count} 个已注入的场景。',
+  'confirm.scenarios_other': '将移除 {count} 个已注入的场景。',
+  'confirm.uploaded': '已上传的批次 {label} 将被替换。',
+  'confirm.irreversible': '此操作无法撤销。',
+  'confirm.proceed': '替换批次',
+  'confirm.cancel': '取消',
+  'upload.load': '加载为当前批次',
+  'upload.loading': '正在加载…',
+  'upload.loaded': '已加载为当前批次。',
+  'upload.warning': '上传的批次保存在内存中，所有连接到此引擎的人都能看到。请勿向此演示上传机密数据。',
+  'audit.viewTitle': '已记录的决定',
+  'audit.count_one': '{count} 条决定',
+  'audit.count_other': '{count} 条决定',
+  'audit.empty': '此批次尚未记录任何决定。',
+  'audit.noIdentity': '此演示没有登录功能：每条记录只包含决定的时间，不包含决定人。',
+  'audit.cause': '原因',
+  'sort.label': '排序',
+  'sort.batchOrder': '批次顺序',
+  'sort.largestVariance': '差异最大的在前',
+  'sort.attentionFirst': '需要关注的在前',
+  'sort.counterpartyAZ': '交易对手 A–Z',
+};

@@ -56,6 +56,7 @@ export function batchState(overrides: Partial<BatchState> = {}): BatchState {
     data_notice: 'synthetic',
     sequence: 1,
     generated_at: '2026-11-18T12:00:00Z',
+    source: { kind: 'SYNTHETIC', label: null, loaded_at: null },
     currency: { code: 'GBP', minor_units: 2, max_amount_tolerance: 50, amount_tolerance_step: 0.5 },
     available_currencies: ['GBP', 'JPY'],
     tolerance,

@@ -1,0 +1,31 @@
+// Japanese text for the batch workspace (see en/workspace.ts).
+import type { WorkspaceMessages } from '../types';
+
+export const workspace: WorkspaceMessages = {
+  'nav.audit': '監査証跡',
+  'app.uploadedBadge': 'アップロードしたバッチ · {label} · メモリ上のみ',
+  'confirm.title': '現在のバッチを置き換えますか？',
+  'confirm.resolutions_one': '{count} 件の監査判断が破棄されます。',
+  'confirm.resolutions_other': '{count} 件の監査判断が破棄されます。',
+  'confirm.scenarios_one': '投入済みのシナリオ {count} 件が削除されます。',
+  'confirm.scenarios_other': '投入済みのシナリオ {count} 件が削除されます。',
+  'confirm.uploaded': 'アップロードしたバッチ {label} は置き換えられます。',
+  'confirm.irreversible': 'この操作は元に戻せません。',
+  'confirm.proceed': 'バッチを置き換える',
+  'confirm.cancel': 'キャンセル',
+  'upload.load': '現在のバッチとして読み込む',
+  'upload.loading': '読み込み中…',
+  'upload.loaded': '現在のバッチとして読み込みました。',
+  'upload.warning': 'アップロードしたバッチはメモリ上に保持され、このエンジンに接続している全員に表示されます。このデモに機密データをアップロードしないでください。',
+  'audit.viewTitle': '記録された判断',
+  'audit.count_one': '{count} 件の判断',
+  'audit.count_other': '{count} 件の判断',
+  'audit.empty': 'このバッチにはまだ判断が記録されていません。',
+  'audit.noIdentity': 'このデモにはサインイン機能がありません。各記録には判断の日時のみが残り、判断者は記録されません。',
+  'audit.cause': '原因',
+  'sort.label': '並べ替え',
+  'sort.batchOrder': 'バッチ順',
+  'sort.largestVariance': '差異の大きい順',
+  'sort.attentionFirst': '要対応を先頭に',
+  'sort.counterpartyAZ': '取引先 A–Z',
+};

@@ -82,6 +82,7 @@ export const domain: DomainMessages = {
   'error.UNKNOWN_CURRENCY': '不支持该币种。',
   'error.TOLERANCE_OUT_OF_RANGE': '金额容差超出该币种的上限。',
   'error.TOLERANCE_DECIMALS': '金额容差的小数位数超出该币种允许的范围。',
+  'error.INVALID_WORKBOOK': '无法加载该工作簿，请查看列出的问题。',
   'error.TIMEOUT': '引擎未能及时响应，请检查网络连接后重试。',
   'error.UNREACHABLE': '无法连接引擎。',
   'error.GENERIC': '请求失败。',

@@ -1,14 +1,19 @@
 import { domain as enDomain } from './messages/en/domain';
 import { ui as enUi } from './messages/en/ui';
+import { workspace as enWorkspace } from './messages/en/workspace';
 import { domain as esDomain } from './messages/es/domain';
 import { ui as esUi } from './messages/es/ui';
+import { workspace as esWorkspace } from './messages/es/workspace';
 import { domain as jaDomain } from './messages/ja/domain';
 import { ui as jaUi } from './messages/ja/ui';
+import { workspace as jaWorkspace } from './messages/ja/workspace';
 import { domain as ptDomain } from './messages/pt/domain';
 import { ui as ptUi } from './messages/pt/ui';
-import type { Messages } from './messages/types';
+import { workspace as ptWorkspace } from './messages/pt/workspace';
 import { domain as zhDomain } from './messages/zh/domain';
 import { ui as zhUi } from './messages/zh/ui';
+import { workspace as zhWorkspace } from './messages/zh/workspace';
+import type { Messages } from './messages/types';
 
 export interface LocaleDefinition {
   code: string;
@@ -19,14 +24,14 @@ export interface LocaleDefinition {
   messages: Messages;
 }
 
-// To add a language: write its two dictionaries under messages/<code>/ and add
+// To add a language: write its three dictionaries under messages/<code>/ and add
 // one entry here. The types make a missing key a compile error.
 export const LOCALES: LocaleDefinition[] = [
-  { code: 'en', name: 'English', intl: 'en-GB', messages: { ...enUi, ...enDomain } },
-  { code: 'es', name: 'Español', intl: 'es', messages: { ...esUi, ...esDomain } },
-  { code: 'pt', name: 'Português', intl: 'pt-BR', messages: { ...ptUi, ...ptDomain } },
-  { code: 'zh', name: '中文', intl: 'zh-CN', messages: { ...zhUi, ...zhDomain } },
-  { code: 'ja', name: '日本語', intl: 'ja-JP', messages: { ...jaUi, ...jaDomain } },
+  { code: 'en', name: 'English', intl: 'en-GB', messages: { ...enUi, ...enDomain, ...enWorkspace } },
+  { code: 'es', name: 'Español', intl: 'es', messages: { ...esUi, ...esDomain, ...esWorkspace } },
+  { code: 'pt', name: 'Português', intl: 'pt-BR', messages: { ...ptUi, ...ptDomain, ...ptWorkspace } },
+  { code: 'zh', name: '中文', intl: 'zh-CN', messages: { ...zhUi, ...zhDomain, ...zhWorkspace } },
+  { code: 'ja', name: '日本語', intl: 'ja-JP', messages: { ...jaUi, ...jaDomain, ...jaWorkspace } },
 ];
 
 export const DEFAULT_LOCALE = LOCALES[0];

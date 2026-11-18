@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { LOCALES } from '../i18n/locales';
 import type { BatchState, LiveRun, StreamStatus } from '../types/reconciliation';
 import { AnomalyResolutionPanel } from './AnomalyResolutionPanel';
+import { ExposurePanel } from './ExposurePanel';
 import { RulePipelineInspector } from './RulePipelineInspector';
 import { ThreeWayMatchTable } from './ThreeWayMatchTable';
 import { ToleranceAndDemoBar } from './ToleranceAndDemoBar';
@@ -94,6 +95,7 @@ export function AppShell({ state, status, liveRun }: Props) {
           {view === 'cockpit' ? (
             <>
               <ToleranceAndDemoBar state={state} liveRun={liveRun} />
+              <ExposurePanel state={state} onOpen={setOpenTxId} />
               <ThreeWayMatchTable state={state} liveRun={liveRun} onOpen={setOpenTxId} />
             </>
           ) : (

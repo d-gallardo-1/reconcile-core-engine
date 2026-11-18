@@ -3,6 +3,7 @@ import type {
   LedgerSchema,
   ResolutionAction,
   RunState,
+  TolerancePreview,
   VerifyResult,
 } from '../types/reconciliation';
 
@@ -64,6 +65,12 @@ export const api = {
   setCurrency: (currency: string) => post<BatchState>('/batches/currency', { currency }),
   setTolerance: (amountTolerance: number, dateWindowDays: number) =>
     post<BatchState>('/reconcile/tolerance', {
+      amount_tolerance: amountTolerance,
+      date_window_days: dateWindowDays,
+    }),
+  /** Read-only: what these rules would change. Nothing is applied. */
+  previewTolerance: (amountTolerance: number, dateWindowDays: number) =>
+    post<TolerancePreview>('/reconcile/tolerance/preview', {
       amount_tolerance: amountTolerance,
       date_window_days: dateWindowDays,
     }),

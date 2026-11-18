@@ -11,6 +11,7 @@ from fastapi import APIRouter, Path
 from ..engine import ReconciliationEngine
 from ..batch_models import BatchState
 from ..models import RunState
+from ..tolerance import TolerancePreview
 from .schemas import CurrencyRequest, ResolveRequest, ToleranceRequest
 
 _CODE = r"^[A-Za-z0-9-]{1,32}$"
@@ -31,6 +32,11 @@ def build_reconcile_router(engine: ReconciliationEngine) -> APIRouter:
     @router.post("/reconcile/tolerance", response_model=BatchState)
     async def tolerance(body: ToleranceRequest) -> BatchState:
         return engine.set_tolerance(body.amount_tolerance, body.date_window_days)
+
+    @router.post("/reconcile/tolerance/preview", response_model=TolerancePreview)
+    async def tolerance_preview(body: ToleranceRequest) -> TolerancePreview:
+        """What the given rules would change. Nothing is applied or broadcast."""
+        return engine.preview_tolerance(body.amount_tolerance, body.date_window_days)
 
     @router.post("/reconcile/reset", response_model=BatchState)
     async def reset() -> BatchState:

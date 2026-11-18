@@ -147,6 +147,18 @@ export interface LedgerSchema {
   max_upload_bytes: number;
 }
 
+/** What the batch would look like under other rules; nothing is applied. */
+export interface TolerancePreview {
+  tolerance: ToleranceConfig;
+  exact_count: number;
+  tolerance_count: number;
+  anomaly_count: number;
+  resolved_count: number;
+  match_rate_pct: number;
+  newly_matched: string[];
+  newly_unmatched: string[];
+}
+
 export interface VerifyResult {
   valid: boolean;
   row_count: number;

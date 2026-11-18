@@ -1,8 +1,7 @@
 """Stateful reconciliation engine (orchestrator).
 
 Holds the active batch in memory, applies the pure rules from ``matching`` and
-broadcasts every change. The process must run with a single worker so that all
-clients share this one state.
+broadcasts every change. Run with a single worker so all clients share this state.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from . import config
 from .batch_models import BatchState, CurrencyInfo, default_tolerance, scenario_infos
 from .currencies import DEFAULT_CURRENCY, Currency, UnknownCurrencyError, get_currency
 from .errors import ConflictError, InvalidRequestError, NotFoundError, run_in_progress
-from .tolerance import check_tolerance
+from .tolerance import TolerancePreview, build_preview, check_tolerance
 from .kpis import compute_kpis
 from .live_run import LiveRun
 from .matching import reconcile
@@ -70,11 +69,7 @@ class ReconciliationEngine:
         self._load_defaults(self._currency)
 
     def _load_defaults(self, currency: Currency) -> None:
-        """Switch to the default batch and rules in ``currency``.
-
-        The batch is loaded before anything is assigned, so a loader failure
-        leaves the engine exactly as it was.
-        """
+        """Default batch and rules in ``currency``; loaded first, so a failure changes nothing."""
         transactions = self._load_batch(currency.code)
         self._currency = currency
         self._transactions = transactions
@@ -95,10 +90,11 @@ class ReconciliationEngine:
     def transactions(self) -> list[LedgerTransaction]:
         return list(self._transactions)
 
-    def records(self) -> list[ReconciledRecord]:
+    def records(self, tolerance: ToleranceConfig | None = None) -> list[ReconciledRecord]:
+        """The batch reconciled under the active rules, or under ``tolerance``."""
         records = []
         for tx in self._transactions:
-            record = reconcile(tx, self._tolerance)
+            record = reconcile(tx, tolerance or self._tolerance)
             resolution = self._resolutions.get(tx.tx_id)
             if resolution is not None:
                 # An auditor's decision is final: it survives later rule changes.
@@ -151,12 +147,19 @@ class ReconciliationEngine:
         self._live.clear()
         return self.publish_state()
 
-    def set_tolerance(self, amount_tolerance: Decimal, date_window_days: int) -> BatchState:
+    def _checked(self, amount_tolerance: Decimal, date_window_days: int) -> ToleranceConfig:
         check_tolerance(self._currency, amount_tolerance)
+        return ToleranceConfig(amount_tolerance=amount_tolerance, date_window_days=date_window_days)
+
+    def preview_tolerance(self, amount_tolerance: Decimal, days: int) -> TolerancePreview:
+        """What other rules would change. Read-only, so it is allowed during a run."""
+        proposed = self._checked(amount_tolerance, days)
+        return build_preview(self.records(), self.records(proposed), proposed)
+
+    def set_tolerance(self, amount_tolerance: Decimal, date_window_days: int) -> BatchState:
+        tolerance = self._checked(amount_tolerance, date_window_days)
         self._require_idle()
-        self._tolerance = ToleranceConfig(
-            amount_tolerance=amount_tolerance, date_window_days=date_window_days
-        )
+        self._tolerance = tolerance
         return self.publish_state()
 
     def inject(self, scenario_code: str) -> BatchState:

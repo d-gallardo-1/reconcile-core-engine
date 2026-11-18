@@ -14,7 +14,7 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
   const running = state.run.status === 'RUNNING';
   const locked = busy || running;
 
-  const commitTolerance = useCallback(
+  const applyTolerance = useCallback(
     (amount: number, days: number) => run(() => api.setTolerance(amount, days)),
     [run],
   );
@@ -51,7 +51,9 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
         tolerance={state.tolerance}
         currency={state.currency}
         disabled={running}
-        onCommit={commitTolerance}
+        revision={`${state.sequence}`}
+        onPreview={api.previewTolerance}
+        onApply={applyTolerance}
       />
 
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-edge pt-4">

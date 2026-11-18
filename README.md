@@ -33,8 +33,13 @@ cannot be edited afterwards.
 
 - Pick the **batch currency** (GBP, EUR, USD, CHF, BRL, MXN, CNY, INR, JPY, CLP) and the
   **interface language** (English, Spanish, Portuguese, Simplified Chinese, Japanese).
-- Move the **amount tolerance** and **date window** (0–5 days) and watch the
-  three tolerance cases flip between matched and anomaly at once.
+- Move the **amount tolerance** and **date window** (0–5 days). Nothing changes yet: the
+  panel previews the effect ("2 records would become anomalies: TX-9010, TX-9012") and
+  the rules take effect only when you press **Apply Rules**.
+- **Search** the table by transaction, invoice or counterparty, and **sort** it by any
+  column (amounts start with the largest; a third click returns to batch order).
+- Start with **Largest Open Exposure**: the open anomalies ranked by the size of their
+  variance, each with its share of the total at stake.
 - Press **Run Live 3-Pass Reconciliation** and follow each record through the passes;
   the progress is streamed, so a second browser tab shows the same run.
 - Inject four audit scenarios:
@@ -153,6 +158,7 @@ FastAPI, single worker
 | POST | `/batches/currency` | `{"currency": "JPY"}`: load the default batch in another currency |
 | POST | `/reconcile/run` | Start a live 3-pass run (202). While it runs, every other change answers 409 |
 | POST | `/reconcile/tolerance` | `{"amount_tolerance": 15, "date_window_days": 2}`; the limit depends on the currency |
+| POST | `/reconcile/tolerance/preview` | Same body; returns what the rules would change (`newly_matched`, `newly_unmatched`, counts). Applies nothing |
 | POST | `/reconcile/reset` | Restore the default batch and tolerances |
 | POST | `/reconcile/inject/{scenario_code}` | Add `SCN-301` … `SCN-304` |
 | POST | `/anomalies/{tx_id}/resolve` | `{"resolution_note": "...", "action": "APPROVE_VARIANCE"}` |

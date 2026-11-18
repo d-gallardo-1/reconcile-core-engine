@@ -119,21 +119,37 @@ npm run build          # type check + production build
 
 ## Architecture
 
-```text
-Browser (React, EventSource)
-        │  same origin
-        ▼
-Nginx (unprivileged)  ──  static bundle
-        │  /api/  (HTTP/1.1, buffering off for SSE)
-        ▼
-FastAPI, single worker
-  api/            HTTP routers (static routes before parameterised ones)
-  engine.py       in-memory batch, tolerances, resolutions   (orchestrator)
-  matching.py     the three passes, pure functions
-  live_run.py     step-by-step run broadcast over SSE
-  pubsub.py       one bounded asyncio.Queue per subscriber
-  excel_io.py     audit pack export and ledger workbook parsing
+```mermaid
+flowchart LR
+    subgraph Browser
+        UI["React SPA<br/>EventSource client"]
+    end
+
+    subgraph Frontend container
+        NGINX["Nginx (unprivileged)<br/>static bundle + /api proxy<br/>HTTP/1.1, buffering off for SSE"]
+    end
+
+    subgraph Backend container
+        API["api/<br/>HTTP routers, static routes<br/>before parameterised ones"]
+        ENGINE["engine.py (orchestrator)<br/>in-memory batch, tolerances,<br/>resolutions"]
+        MATCH["matching.py<br/>the three passes,<br/>pure functions"]
+        LIVE["live_run.py<br/>step-by-step run"]
+        PUBSUB["pubsub.py<br/>one bounded asyncio.Queue<br/>per subscriber"]
+        EXCEL["excel_io.py<br/>audit pack export and<br/>ledger workbook parsing"]
+    end
+
+    UI -- "same origin" --> NGINX
+    NGINX -- "/api/ (REST and SSE)" --> API
+    API --> ENGINE
+    API --> EXCEL
+    ENGINE --> MATCH
+    ENGINE --> LIVE
+    ENGINE --> PUBSUB
+    PUBSUB -- "state_update /<br/>reconciliation_progress" --> API
+    EXCEL -- "parsed batch at start-up" --> ENGINE
 ```
+
+FastAPI runs as a single worker, so the in-memory batch is shared by every client.
 
 - **One source of truth.** At start-up the synthetic batch is written to a workbook and
   parsed back through the same code path an uploaded ledger would take. A test proves

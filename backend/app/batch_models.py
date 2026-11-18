@@ -66,6 +66,19 @@ class BatchSource(BaseModel):
     label: str | None = None
     loaded_at: datetime | None = None
 
+    def notice(self, synthetic_notice: str) -> str:
+        """What the batch is, in the words that also go into the audit pack.
+
+        Only the built-in batch may be called synthetic; uploaded rows are the
+        user's own and this engine does not vouch for them.
+        """
+        if self.kind == "SYNTHETIC":
+            return synthetic_notice
+        return (
+            f"Uploaded workbook \"{self.label}\": data supplied by the user and not verified "
+            "by this engine. Held in memory only."
+        )
+
 
 class BatchState(BaseModel):
     """Full snapshot sent by ``/batches/current`` and by every SSE state event."""

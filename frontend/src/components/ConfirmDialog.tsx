@@ -20,20 +20,25 @@ export function ConfirmDialog({ title, lines, confirmLabel, cancelLabel, onConfi
   const bodyId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
 
+  // The latest handler, without making the effect below depend on it: the page
+  // re-renders on every live update, and focus must not jump each time.
+  const cancel = useRef(onCancel);
+  cancel.current = onCancel;
+
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     cancelRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.stopPropagation(); // do not also close a drawer underneath
-      onCancel();
+      cancel.current();
     };
     window.addEventListener('keydown', onKey, true);
     return () => {
       window.removeEventListener('keydown', onKey, true);
       previous?.focus();
     };
-  }, [onCancel]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center p-4">

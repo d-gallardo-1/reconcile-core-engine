@@ -27,6 +27,7 @@ export const workspace: WorkspaceMessages = {
   'audit.cause': 'Causa',
   'sort.label': 'Ordenar',
   'sort.batchOrder': 'Orden del lote',
+  'sort.columnOrder': 'Orden por columna',
   'sort.largestVariance': 'Mayor diferencia primero',
   'sort.attentionFirst': 'Lo que requiere atención primero',
   'sort.counterpartyAZ': 'Contraparte A–Z',

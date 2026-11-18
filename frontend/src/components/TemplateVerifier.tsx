@@ -31,12 +31,16 @@ export function TemplateVerifier({ state, maxUploadBytes }: Props) {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const { guard, dialog } = useReplaceGuard(state);
 
-  const attempt = async (file: File, call: () => Promise<Partial<Outcome>>) => {
+  /** Runs a request and merges its result into what is already known about the file. */
+  const attempt = async (known: Outcome, call: () => Promise<Partial<Outcome>>) => {
     setBusy(true);
+    setOutcome({ ...known, failure: undefined });
     try {
-      setOutcome({ file, ...(await call()) });
+      const gained = await call();
+      setOutcome({ ...known, failure: undefined, ...gained });
     } catch (cause) {
-      setOutcome({ file, failure: cause instanceof ApiError ? cause : new ApiError('GENERIC', '') });
+      const failure = cause instanceof ApiError ? cause : new ApiError('GENERIC', '');
+      setOutcome({ ...known, failure });
     } finally {
       setBusy(false);
     }
@@ -47,11 +51,19 @@ export function TemplateVerifier({ state, maxUploadBytes }: Props) {
     event.target.value = ''; // allow choosing the same file again
     if (!file) return;
     if (file.size > maxUploadBytes) return setOutcome({ file, tooLarge: true });
-    void attempt(file, async () => ({ result: await api.verifyTemplate(file) }));
+    void attempt({ file }, async () => ({ result: await api.verifyTemplate(file) }));
   };
 
-  const load = (file: File) =>
-    guard(() => void attempt(file, async () => (await api.uploadBatch(file), { loaded: true })));
+  // A refused load (for example during a run) keeps the verification result,
+  // so the workbook still reads as valid and can be loaded again.
+  const load = (verified: Outcome) =>
+    guard(
+      () =>
+        void attempt(verified, async () => {
+          await api.uploadBatch(verified.file);
+          return { loaded: true };
+        }),
+    );
 
   // Built on render so the messages follow a language change. Row-level
   // problems come from the backend and stay in English.
@@ -63,7 +75,7 @@ export function TemplateVerifier({ state, maxUploadBytes }: Props) {
       ? errorText(i18n, failure)
       : null;
   const valid = outcome?.result?.valid === true;
-  const good = valid || outcome?.loaded === true;
+  const good = (valid && !failure) || outcome?.loaded === true;
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap gap-2">
@@ -109,10 +121,10 @@ export function TemplateVerifier({ state, maxUploadBytes }: Props) {
               ))}
             </ul>
           )}
-          {valid && (
+          {valid && !outcome.loaded && (
             <div className="mt-3 border-t border-exact/30 pt-3">
               <p className="mb-2 text-xs text-amber-200">{t('upload.warning')}</p>
-              <button type="button" className="btn-primary" disabled={busy} onClick={() => load(outcome.file)}>
+              <button type="button" className="btn-primary" disabled={busy} onClick={() => load(outcome)}>
                 <FileUp aria-hidden="true" className="h-4 w-4" />
                 {busy ? t('upload.loading') : t('upload.load')}
               </button>

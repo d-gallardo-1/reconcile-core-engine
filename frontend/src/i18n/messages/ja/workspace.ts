@@ -25,6 +25,7 @@ export const workspace: WorkspaceMessages = {
   'audit.cause': '原因',
   'sort.label': '並べ替え',
   'sort.batchOrder': 'バッチ順',
+  'sort.columnOrder': '列の並び順',
   'sort.largestVariance': '差異の大きい順',
   'sort.attentionFirst': '要対応を先頭に',
   'sort.counterpartyAZ': '取引先 A–Z',

@@ -25,6 +25,7 @@ export const workspace: WorkspaceMessages = {
   'audit.cause': '原因',
   'sort.label': '排序',
   'sort.batchOrder': '批次顺序',
+  'sort.columnOrder': '按列排序',
   'sort.largestVariance': '差异最大的在前',
   'sort.attentionFirst': '需要关注的在前',
   'sort.counterpartyAZ': '交易对手 A–Z',

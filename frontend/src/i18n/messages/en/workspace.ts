@@ -27,6 +27,7 @@ export const workspace = {
   'audit.cause': 'Cause',
   'sort.label': 'Sort',
   'sort.batchOrder': 'Batch order',
+  'sort.columnOrder': 'Column order',
   'sort.largestVariance': 'Largest variance first',
   'sort.attentionFirst': 'Needs attention first',
   'sort.counterpartyAZ': 'Counterparty A–Z',

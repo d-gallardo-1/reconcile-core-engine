@@ -99,7 +99,7 @@ class ReconciliationEngine:
         return BatchState(
             entity=self._entity,
             batch_id=self._batch_id,
-            data_notice=self._data_notice,
+            data_notice=self._source.notice(self._data_notice),
             sequence=self._sequence,
             source=self._source,
             generated_at=self._clock(),

@@ -108,7 +108,8 @@ Controls that exist in this repository:
 | Input validation with bounds on every request body and path parameter | `backend/app/api/` |
 | Upload limit of 2 MB, enforced while reading the body | `backend/app/api/export_routes.py` |
 | Hardened XML parsing for workbooks (defusedxml), read-only parsing, 5,000-row limit that also counts blank and formatted rows (the error says so), bounded numeric values | `backend/app/excel_io.py`, `backend/app/excel_schema.py` |
-| Workbook parsing runs off the event loop, so an upload does not stall the stream | `backend/app/api/export_routes.py` |
+| Workbook parsing runs off the event loop, so an upload does not stall the stream | `backend/app/api/upload_routes.py` |
+| A loaded workbook is never described as synthetic: the batch notice, also written to the audit pack, says the data is the user's and unverified | `backend/app/batch_models.py` |
 | Spreadsheet formula injection: text starting with `=`, `+`, `-` or `@` is stored as text | `backend/app/excel_schema.py` |
 | Verification never changes the batch. Loading a workbook is a separate, explicit request; an invalid one is refused whole and the batch is kept | `backend/app/api/upload_routes.py` |
 | The name shown for a loaded workbook is stripped of control characters and cut to 80 characters before it is broadcast | `backend/app/api/upload_routes.py` |

@@ -1,5 +1,6 @@
 import { Search, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
+import { useIsWide } from '../hooks/useIsWide';
 import { useI18n } from '../i18n/I18nProvider';
 import { isSelectable, pruneSelection, summarize, toggle, toggleAll } from '../lib/selection';
 import { FILTERS, type StatusFilter } from '../lib/statusMeta';
@@ -22,6 +23,7 @@ interface Props {
 export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Props) {
   const { t, fmt } = useI18n();
   const searchId = useId();
+  const wide = useIsWide();
   const [filter, setFilter] = useState<StatusFilter>('ALL');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort | null>(null);
@@ -100,12 +102,12 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Pr
         <p role="status" className="num text-xs text-slate-400">
           {t('table.count', { shown: fmt.integer(rows.length), total: fmt.integer(state.records.length) })}
         </p>
-        <MobileSort sort={sort} onChange={setSort} />
+        {!wide && <MobileSort sort={sort} onChange={setSort} />}
       </div>
 
       <BulkResolveBar selection={selection} onClear={() => setSelected(new Set())} />
 
-      <div className="lg:hidden">
+      {!wide && (
         <MatchCardList
           rows={rows}
           liveRun={liveRun}
@@ -113,8 +115,9 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Pr
           onToggle={(txId) => setSelected((current) => toggle(current, txId))}
           onOpen={onOpen}
         />
-      </div>
-      <div className="hidden overflow-x-auto lg:block">
+      )}
+      {wide && (
+      <div className="overflow-x-auto">
         <table className="w-full min-w-[1020px] border-collapse text-sm">
           <MatchTableHead
             currencyCode={state.currency.code}
@@ -138,6 +141,7 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Pr
           </tbody>
         </table>
       </div>
+      )}
       {rows.length === 0 && (
         <p className="border-t border-edge p-6 text-center text-sm text-slate-400">
           {query.trim() ? t('table.noMatch') : t('table.empty')}

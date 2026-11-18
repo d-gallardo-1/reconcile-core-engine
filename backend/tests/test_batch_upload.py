@@ -130,3 +130,23 @@ def test_upload_is_refused_during_a_run():
         response = upload(client)
         assert (response.status_code, response.json()["code"]) == (409, "RUN_IN_PROGRESS")
         assert client.get(f"{API}/batches/current").json()["source"]["kind"] == "SYNTHETIC"
+
+
+def test_an_uploaded_batch_is_never_described_as_synthetic(client):
+    import io
+
+    from openpyxl import load_workbook
+
+    synthetic = client.get(f"{API}/batches/current").json()["data_notice"]
+    assert "synthetic" in synthetic
+
+    notice = upload(client).json()["data_notice"]
+
+    # The notice travels into the audit pack; it must not vouch for user data.
+    assert "synthetic" not in notice.lower()
+    assert "ledger march.xlsx" in notice and "not verified" in notice
+    workbook = load_workbook(io.BytesIO(client.get(f"{API}/export/excel").content))
+    summary = dict(workbook["Summary"].iter_rows(values_only=True))
+    assert summary["Data notice"] == notice
+
+    assert client.post(f"{API}/reconcile/reset").json()["data_notice"] == synthetic

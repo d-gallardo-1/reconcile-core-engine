@@ -117,30 +117,30 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Pr
         />
       )}
       {wide && (
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1020px] border-collapse text-sm">
-          <MatchTableHead
-            currencyCode={state.currency.code}
-            sort={sort}
-            onSort={(key) => setSort((current) => nextSort(current, key))}
-            allSelected={allSelected}
-            onToggleAll={() => setSelected((current) => toggleAll(current, rows))}
-          />
-          <tbody>
-            {rows.map((record) => (
-              <MatchRow
-                key={record.tx_id}
-                record={record}
-                liveStatus={liveRun?.overlay ? (liveRun.verdicts[record.tx_id] ?? null) : undefined}
-                current={liveRun?.progress?.tx_id === record.tx_id}
-                selected={selected.has(record.tx_id)}
-                onToggle={(txId) => setSelected((current) => toggle(current, txId))}
-                onOpen={onOpen}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1020px] border-collapse text-sm">
+            <MatchTableHead
+              currencyCode={state.currency.code}
+              sort={sort}
+              onSort={(key) => setSort((current) => nextSort(current, key))}
+              allSelected={allSelected}
+              onToggleAll={() => setSelected((current) => toggleAll(current, rows))}
+            />
+            <tbody>
+              {rows.map((record) => (
+                <MatchRow
+                  key={record.tx_id}
+                  record={record}
+                  liveStatus={liveRun?.overlay ? (liveRun.verdicts[record.tx_id] ?? null) : undefined}
+                  current={liveRun?.progress?.tx_id === record.tx_id}
+                  selected={selected.has(record.tx_id)}
+                  onToggle={(txId) => setSelected((current) => toggle(current, txId))}
+                  onOpen={onOpen}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       {rows.length === 0 && (
         <p className="border-t border-edge p-6 text-center text-sm text-slate-400">

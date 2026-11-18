@@ -37,6 +37,22 @@ describe('TemplateVerifier', () => {
     });
   }
 
+  it('shows no verdict while a file is still being verified', async () => {
+    let answer: (value: { valid: boolean; row_count: number; errors: string[] }) => void = () => undefined;
+    vi.spyOn(api, 'verifyTemplate').mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    render(<TemplateVerifier state={batchState()} maxUploadBytes={2_000_000} />, wrapper());
+    const input = document.querySelector('input[type=file]') as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File(['x'], 'march.xlsx')] } });
+    });
+
+    expect(screen.queryByText(/not valid/)).toBeNull();
+    expect(screen.getByText('Verifying…')).toBeTruthy();
+
+    await act(async () => answer({ valid: true, row_count: 3, errors: [] }));
+    expect(screen.getByText(/valid, 3 records/)).toBeTruthy();
+  });
+
   it('offers to load a workbook only after it verified as valid', async () => {
     await verifyAFile();
     expect(screen.getByText(/valid, 3 records/)).toBeTruthy();

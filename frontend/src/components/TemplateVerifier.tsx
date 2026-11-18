@@ -34,7 +34,9 @@ export function TemplateVerifier({ state, maxUploadBytes }: Props) {
   /** Runs a request and merges its result into what is already known about the file. */
   const attempt = async (known: Outcome, call: () => Promise<Partial<Outcome>>) => {
     setBusy(true);
-    setOutcome({ ...known, failure: undefined });
+    // A retry clears the old error at once. A file not verified yet shows nothing
+    // until its answer arrives, so it never reads as "not valid" in between.
+    if (known.result) setOutcome({ ...known, failure: undefined });
     try {
       const gained = await call();
       setOutcome({ ...known, failure: undefined, ...gained });

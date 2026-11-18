@@ -16,6 +16,17 @@ updates:
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
+    # React 19 is a migration of its own: the four packages must move together.
+    # Remove this block when that migration is planned.
+    ignore:
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directories: [/backend, /frontend]
     schedule:

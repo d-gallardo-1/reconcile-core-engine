@@ -21,6 +21,9 @@ services:
       start_period: 5s
       retries: 5
     read_only: true
+    # Scratch space for libraries that need a temporary file.
+    tmpfs:
+      - /tmp
     cap_drop:
       - ALL
     security_opt:

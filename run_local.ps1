@@ -85,7 +85,9 @@ try {
 
     Push-Location $frontend
     try {
-        if (-not (Test-Path 'node_modules')) {
+        # npm writes this marker when an install completes, so an interrupted
+        # install is repeated instead of being mistaken for a finished one.
+        if (-not (Test-Path 'node_modules\.package-lock.json')) {
             Write-Host 'Installing frontend dependencies...'
             npm ci --no-fund --no-audit
             if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }

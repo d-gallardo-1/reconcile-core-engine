@@ -62,12 +62,14 @@ anomalies, at the default tolerances of ±£15.00 and ±2 days.
 docker compose up --build
 ```
 
-Then open <http://127.0.0.1:8081>. The port is 8081 so this project can run next to
-`plantpulse-live-ops` (8080).
+Then open <http://127.0.0.1:8081>. The port is 8081 so it does not collide with other
+local demos on 8080.
 
 ### Without Docker
 
-Requires Python 3.13+ and Node.js 20.19+.
+Requires Python 3.13+ and Node.js 20.19+. The container image and CI use Python 3.13;
+see [verification status](docs/ARCHITECTURE_AND_SECURITY.md#8-verification-status) for
+what was run where.
 
 ```powershell
 # Windows. Unsigned scripts are blocked by default, so the policy is relaxed
@@ -118,8 +120,8 @@ FastAPI, single worker
 - **Exact money.** Amounts are `Decimal` inside the engine and rounded to the penny;
   variances are never computed with floats.
 - **Every state event is a full snapshot.** A client that connects late or reconnects
-  is consistent again after one message. A `heartbeat` event every 5 seconds lets the
-  browser detect a dead connection.
+  is consistent again after one message. A `heartbeat` event is sent after 5 seconds
+  without any other event, so the browser can detect a dead connection.
 - **Small modules.** No source file is longer than 200 lines;
   `scripts/check_file_length.py` enforces it in CI.
 
@@ -130,7 +132,7 @@ FastAPI, single worker
 | GET | `/health` | Liveness and subscriber count |
 | GET | `/batches/current` | Summary, KPIs, all records, active tolerances |
 | GET | `/stream` | SSE: `snapshot`, `state_update`, `reconciliation_progress`, `heartbeat` |
-| POST | `/reconcile/run` | Start a live 3-pass run (202; 409 if one is running) |
+| POST | `/reconcile/run` | Start a live 3-pass run (202). While it runs, every other change answers 409 |
 | POST | `/reconcile/tolerance` | `{"amount_tolerance_gbp": 15, "date_window_days": 2}` |
 | POST | `/reconcile/reset` | Restore the default batch and tolerances |
 | POST | `/reconcile/inject/{scenario_code}` | Add `SCN-301` … `SCN-304` |
@@ -149,9 +151,13 @@ Built and covered by automated tests:
 
 - The three matching passes and tolerance re-evaluation, including boundary values.
 - Scenario injection, the resolution workflow (immutability included) and reset.
-- Excel export, round-trip parsing, malformed-workbook reporting and formula-safe text.
+- Excel export, round-trip parsing, malformed-workbook reporting (out-of-range numbers
+  and the row limit included) and formula-safe text.
 - The SSE stream: initial snapshot, broadcast to several subscribers, heartbeat and the
-  ordered progress of a live run.
+  ordered progress of a live run, and a run that fails midway being reported as failed.
+
+Not covered by automated tests: the frontend. It is type-checked, built and was
+exercised by hand in a browser, but has no unit tests.
 
 Deliberately not built:
 

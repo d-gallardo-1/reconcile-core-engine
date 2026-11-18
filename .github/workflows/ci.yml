@@ -69,7 +69,9 @@ jobs:
         run: docker compose up --build --detach --wait --wait-timeout 180
       - name: UI is served with its security headers
         run: |
-          curl --fail --silent --show-error "$BASE_URL/" | grep -q "Reconcile Core Engine"
+          # Nginx may still be starting: retry until it accepts connections.
+          curl --fail --silent --show-error --retry 10 --retry-delay 1 --retry-connrefused \
+            "$BASE_URL/" | grep -q "Reconcile Core Engine"
           curl --silent --head "$BASE_URL/" | grep -i "^content-security-policy:"
       - name: API answers through the proxy
         run: curl --fail --silent --show-error "$BASE_URL/api/v1/health" | grep -q '"status":"ok"'
@@ -81,9 +83,11 @@ jobs:
         run: |
           curl --fail --silent --show-error --no-buffer --max-time 20 \
             "$BASE_URL/api/v1/stream?max_events=4" > stream.txt &
+          stream_pid=$!
           sleep 2
           curl --fail --silent --show-error -X POST "$BASE_URL/api/v1/reconcile/run" > /dev/null
-          wait
+          # Fails the step if the stream client itself failed or timed out.
+          wait "$stream_pid"
           grep -q "^event: snapshot" stream.txt
           grep -q "^event: reconciliation_progress" stream.txt
       - name: Audit pack download and template verification
@@ -94,8 +98,12 @@ jobs:
             "$BASE_URL/api/v1/template/verify" | grep -q '"valid":true'
       - name: Containers do not run as root
         run: |
-          test "$(docker compose exec -T backend id -u)" != "0"
-          test "$(docker compose exec -T frontend id -u)" != "0"
+          # Positive checks: an exec that fails prints nothing and must not pass.
+          backend_uid="$(docker compose exec -T backend id -u)"
+          frontend_uid="$(docker compose exec -T frontend id -u)"
+          test "$backend_uid" = "10001"
+          test -n "$frontend_uid"
+          test "$frontend_uid" != "0"
       - name: Show container state and logs on failure
         if: failure()
         run: |

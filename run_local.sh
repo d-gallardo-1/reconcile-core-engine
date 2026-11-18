@@ -57,7 +57,10 @@ echo "Starting backend on http://127.0.0.1:8001 ..."
     --workers 1 --timeout-graceful-shutdown 3
 ) &
 api_pid=$!
-trap 'kill "$api_pid" 2>/dev/null || true' EXIT INT TERM
+trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+# Ctrl+C ends the script here (the EXIT trap then stops the backend) instead of
+# letting it continue and report a misleading start-up failure.
+trap 'exit 130' INT TERM
 
 # Fail fast if the backend did not come up. The process is checked as well as
 # the port, and the probe ignores proxy settings: a proxy variable (often set
@@ -83,7 +86,9 @@ if [ -z "$healthy" ]; then
 fi
 
 cd "$frontend"
-if [ ! -d node_modules ]; then
+# npm writes this marker when an install completes, so an interrupted install
+# is repeated instead of being mistaken for a finished one.
+if [ ! -f node_modules/.package-lock.json ]; then
   echo "Installing frontend dependencies..."
   npm ci --no-fund --no-audit
 fi

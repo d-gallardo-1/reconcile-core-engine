@@ -1,0 +1,46 @@
+name: reconcile-core-engine
+
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      # Pause between two records of a live run, so a viewer can follow it.
+      RECONCILE_STEP_SECONDS: "0.15"
+    # Not published to the host: only the frontend proxy can reach it.
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 5
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    # Host port 8081, so it runs next to plantpulse-live-ops (8080). Bound to
+    # localhost only: the demo endpoints have no authentication, so do not
+    # publish this port to a network without adding access control.
+    ports:
+      - "127.0.0.1:8081:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

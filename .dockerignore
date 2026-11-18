@@ -1,0 +1,10 @@
+# Used when building from the repository root; each image has its own file too.
+.git/
+**/.venv/
+**/node_modules/
+**/dist/
+**/__pycache__/
+**/.pytest_cache/
+*.xlsx
+.env
+.env.*

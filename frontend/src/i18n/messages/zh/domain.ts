@@ -76,6 +76,7 @@ export const domain: DomainMessages = {
   'error.SCENARIO_ACTIVE': '该场景已在当前批次中启用。',
   'error.ALREADY_RESOLVED': '该记录已处理，审计条目不可更改。',
   'error.NOT_AN_OPEN_ANOMALY': '该记录不是未结异常。',
+  'error.MIXED_ANOMALY_TYPES': '所选内容包含不同原因，请一次处理一种原因。',
   'error.UNKNOWN_SCENARIO': '未知场景。',
   'error.UNKNOWN_TRANSACTION': '未知交易。',
   'error.UNKNOWN_CURRENCY': '不支持该币种。',

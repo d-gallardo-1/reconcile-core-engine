@@ -12,7 +12,7 @@ from ..engine import ReconciliationEngine
 from ..batch_models import BatchState
 from ..models import RunState
 from ..tolerance import TolerancePreview
-from .schemas import CurrencyRequest, ResolveRequest, ToleranceRequest
+from .schemas import BulkResolveRequest, CurrencyRequest, ResolveRequest, ToleranceRequest
 
 _CODE = r"^[A-Za-z0-9-]{1,32}$"
 
@@ -46,8 +46,13 @@ def build_reconcile_router(engine: ReconciliationEngine) -> APIRouter:
     async def inject(scenario_code: str = Path(pattern=_CODE)) -> BatchState:
         return engine.inject(scenario_code)
 
+    @router.post("/anomalies/resolve-batch", response_model=BatchState)
+    async def resolve_batch(body: BulkResolveRequest) -> BatchState:
+        """One decision for several open anomalies of the same cause, all or nothing."""
+        return engine.resolve(body.tx_ids, body.action, body.resolution_note)
+
     @router.post("/anomalies/{tx_id}/resolve", response_model=BatchState)
     async def resolve(body: ResolveRequest, tx_id: str = Path(pattern=_CODE)) -> BatchState:
-        return engine.resolve(tx_id, body.action, body.resolution_note)
+        return engine.resolve([tx_id], body.action, body.resolution_note)
 
     return router

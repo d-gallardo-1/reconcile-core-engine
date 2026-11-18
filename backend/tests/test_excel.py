@@ -43,7 +43,7 @@ def test_startup_batch_was_ingested_through_excel(engine):
 
 def test_audit_pack_sheets_follow_the_classification(engine, tmp_path):
     engine.inject("SCN-302")
-    engine.resolve("TX-9013", ResolutionAction.APPROVE_VARIANCE, "=HYPERLINK(\"http://x\")")
+    engine.resolve(["TX-9013"], ResolutionAction.APPROVE_VARIANCE, "=HYPERLINK(\"http://x\")")
     path = tmp_path / "audit-pack.xlsx"
     export_audit_workbook(engine.snapshot(), path)
     workbook = load_workbook(path)

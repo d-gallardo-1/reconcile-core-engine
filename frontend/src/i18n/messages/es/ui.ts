@@ -154,4 +154,19 @@ export const ui: UiMessages = {
   'tol.rate': 'La tasa de conciliación sería {percent}',
   'tol.apply': 'Aplicar Reglas',
   'tol.discard': 'Descartar',
+
+  // Bulk resolution and keyboard navigation between records.
+  'bulk.select': 'Seleccionar {id}',
+  'bulk.selectAll': 'Seleccionar todas las anomalías abiertas mostradas',
+  'bulk.title': 'Resolver Anomalías Seleccionadas',
+  'bulk.selected_one': '{count} anomalía seleccionada',
+  'bulk.selected_other': '{count} anomalías seleccionadas',
+  'bulk.total': 'Diferencia combinada {amount}',
+  'bulk.mixed':
+    'La selección mezcla causas distintas. Seleccione anomalías de una sola causa para resolverlas con una nota.',
+  'bulk.clear': 'Quitar selección',
+  'drawer.previous': 'Registro anterior',
+  'drawer.next': 'Registro siguiente',
+  'drawer.position': '{position} de {total}',
+  'drawer.keys': '↑ y ↓ pasan entre los registros mostrados en la tabla.',
 };

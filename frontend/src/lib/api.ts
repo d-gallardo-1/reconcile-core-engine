@@ -82,6 +82,13 @@ export const api = {
       action,
       resolution_note: resolutionNote,
     }),
+  /** One decision and one note for several open anomalies of the same cause. */
+  resolveMany: (txIds: string[], action: ResolutionAction, resolutionNote: string) =>
+    post<BatchState>('/anomalies/resolve-batch', {
+      tx_ids: txIds,
+      action,
+      resolution_note: resolutionNote,
+    }),
   ledgerSchema: () => request<LedgerSchema>('/schema/ledger'),
   /** Sends the workbook as the raw request body. The active batch is not changed. */
   verifyTemplate: (file: File) =>

@@ -86,6 +86,7 @@ export const domain = {
   'error.SCENARIO_ACTIVE': 'This scenario is already active in the batch.',
   'error.ALREADY_RESOLVED': 'This record is already resolved; audit entries cannot be changed.',
   'error.NOT_AN_OPEN_ANOMALY': 'This record is not an open anomaly.',
+  'error.MIXED_ANOMALY_TYPES': 'The selection mixes different causes; resolve one cause at a time.',
   'error.UNKNOWN_SCENARIO': 'Unknown scenario.',
   'error.UNKNOWN_TRANSACTION': 'Unknown transaction.',
   'error.UNKNOWN_CURRENCY': 'This currency is not supported.',

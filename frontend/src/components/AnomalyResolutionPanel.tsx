@@ -1,37 +1,50 @@
-import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { EM_DASH, formatDateTime } from '../i18n/format';
 import { useI18n } from '../i18n/I18nProvider';
+import { api } from '../lib/api';
 import { explain } from '../lib/explain';
+import { isTyping, type Neighbours } from '../lib/navigation';
 import type { ReconciledRecord } from '../types/reconciliation';
+import { DrawerHeader } from './DrawerHeader';
 import { ResolutionForm } from './ResolutionForm';
 import { SourceComparison } from './SourceComparison';
 import { StatusBadge } from './StatusBadge';
 
 interface Props {
   record: ReconciledRecord;
+  /** The records before and after this one in the list being worked through. */
+  neighbours: Neighbours;
+  onNavigate: (txId: string) => void;
   onClose: () => void;
 }
 
 /** Drawer with the 3-source comparison, the verdict and the audit trail. */
-export function AnomalyResolutionPanel({ record, onClose }: Props) {
+export function AnomalyResolutionPanel({ record, neighbours, onNavigate, onClose }: Props) {
   const i18n = useI18n();
   const { t, tn, fmt } = i18n;
   const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = `drawer-title-${record.tx_id}`;
 
+  // Focus moves in once, when the drawer opens, and returns where it was on close.
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
+    return () => previous?.focus();
+  }, []);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') return onClose();
+      // Arrows belong to the note while the user is writing it.
+      if (isTyping(event.target) || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.key === 'ArrowUp' ? neighbours.previous : event.key === 'ArrowDown' ? neighbours.next : undefined;
+      if (target === undefined) return;
+      event.preventDefault(); // do not scroll the page behind the drawer
+      if (target !== null) onNavigate(target);
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      previous?.focus();
-    };
-  }, [onClose]);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [neighbours.previous, neighbours.next, onNavigate, onClose]);
 
   const shift = record.date_shift_days;
   const shiftText =
@@ -50,18 +63,14 @@ export function AnomalyResolutionPanel({ record, onClose }: Props) {
         aria-labelledby={titleId}
         className="relative flex h-full w-full max-w-md flex-col gap-4 overflow-y-auto border-l border-edge bg-panel p-5 shadow-2xl"
       >
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <h3 id={titleId} className="num text-lg font-semibold text-slate-50">
-              {record.tx_id}
-            </h3>
-            <p className="text-sm text-slate-300">{record.counterparty}</p>
-            <p className="num text-xs text-slate-500">{record.invoice_ref}</p>
-          </div>
-          <button ref={closeRef} type="button" className="btn px-2" onClick={onClose} aria-label={t('drawer.close')}>
-            <X aria-hidden="true" className="h-4 w-4" />
-          </button>
-        </header>
+        <DrawerHeader
+          record={record}
+          titleId={titleId}
+          neighbours={neighbours}
+          onNavigate={onNavigate}
+          onClose={onClose}
+          closeRef={closeRef}
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={record.status} />
@@ -98,7 +107,13 @@ export function AnomalyResolutionPanel({ record, onClose }: Props) {
 
         <SourceComparison record={record} />
 
-        {record.status === 'ANOMALY' && <ResolutionForm txId={record.tx_id} />}
+        {record.status === 'ANOMALY' && (
+          // Keyed by record: a note started for one anomaly must not follow to the next.
+          <ResolutionForm
+            key={record.tx_id}
+            onResolve={(action, note) => api.resolve(record.tx_id, action, note)}
+          />
+        )}
         {resolution && (
           <section aria-label={t('audit.title')} className="rounded-md border border-audited/40 bg-audited/10 p-3 text-sm">
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-300">
@@ -120,6 +135,7 @@ export function AnomalyResolutionPanel({ record, onClose }: Props) {
             </dl>
           </section>
         )}
+        <p className="mt-auto text-xs text-slate-500">{t('drawer.keys')}</p>
       </aside>
     </div>
   );

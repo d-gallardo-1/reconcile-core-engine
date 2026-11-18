@@ -29,7 +29,7 @@ from .models import (
     ToleranceConfig,
 )
 from .pubsub import Broadcaster, StreamEvent
-from .resolutions import build_resolution
+from .resolutions import build_resolutions
 
 BatchLoader = Callable[[str], list[LedgerTransaction]]
 
@@ -180,10 +180,11 @@ class ReconciliationEngine:
         self._live.clear()
         return self.publish_state()
 
-    def resolve(self, tx_id: str, action: ResolutionAction, note: str) -> BatchState:
+    def resolve(self, tx_ids: list[str], action: ResolutionAction, note: str) -> BatchState:
+        """Record one decision for one or several open anomalies, all or nothing."""
         self._require_idle()  # a run replays verdicts computed when it started
-        record = next((r for r in self.records() if r.tx_id == tx_id), None)
-        self._resolutions[tx_id] = build_resolution(record, tx_id, action, note, self._clock())
+        entries = build_resolutions(self.records(), tx_ids, action, note, self._clock())
+        self._resolutions.update(entries)
         return self.publish_state()
 
     # --- live run ----------------------------------------------------------

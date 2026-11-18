@@ -83,6 +83,7 @@ export const domain: DomainMessages = {
   'error.SCENARIO_ACTIVE': 'Este escenario ya está activo en el lote.',
   'error.ALREADY_RESOLVED': 'Este registro ya está resuelto; las entradas de auditoría no pueden modificarse.',
   'error.NOT_AN_OPEN_ANOMALY': 'Este registro no es una anomalía abierta.',
+  'error.MIXED_ANOMALY_TYPES': 'La selección mezcla causas distintas; resuelva una causa a la vez.',
   'error.UNKNOWN_SCENARIO': 'Escenario desconocido.',
   'error.UNKNOWN_TRANSACTION': 'Transacción desconocida.',
   'error.UNKNOWN_CURRENCY': 'Esta moneda no es compatible.',

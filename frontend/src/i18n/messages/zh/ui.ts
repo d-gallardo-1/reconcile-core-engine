@@ -154,4 +154,18 @@ export const ui: UiMessages = {
   'tol.rate': '匹配率将为 {percent}',
   'tol.apply': '应用规则',
   'tol.discard': '放弃',
+
+  // Bulk resolution and keyboard navigation between records.
+  'bulk.select': '选择 {id}',
+  'bulk.selectAll': '选择所有显示的未结异常',
+  'bulk.title': '处理所选异常',
+  'bulk.selected_one': '已选择 {count} 条异常',
+  'bulk.selected_other': '已选择 {count} 条异常',
+  'bulk.total': '合计差异 {amount}',
+  'bulk.mixed': '所选内容包含不同原因。请选择同一原因的异常，以便用一条备注一并处理。',
+  'bulk.clear': '清除选择',
+  'drawer.previous': '上一条记录',
+  'drawer.next': '下一条记录',
+  'drawer.position': '{position} / {total}',
+  'drawer.keys': '按 ↑ 和 ↓ 在表格显示的记录之间切换。',
 };

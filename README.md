@@ -53,6 +53,11 @@ cannot be edited afterwards.
 
 - Open any record to compare the three sources side by side and, for an anomaly,
   **Approve Variance**, **Flag for Credit Note** or **Reject Entry** with an audit note.
+- **Resolve several at once**: tick the anomalies of one cause in the table and apply
+  a single decision and note to all of them. A selection that mixes causes is refused,
+  and the operation is all or nothing.
+- **Work through the list with the keyboard**: with a record open, ↑ and ↓ move to the
+  previous and next record shown in the table, following its filter, search and order.
 - **Export the .xlsx audit pack** (`Summary`, `Exact_Matches`, `Tolerance_Matches`,
   `Unresolved_Anomalies`, `Resolved_Audit_Trail`, `Ledger_Input`).
 - In **Rule Engine & Schema Inspector**, download the input template and verify a
@@ -162,6 +167,7 @@ FastAPI, single worker
 | POST | `/reconcile/reset` | Restore the default batch and tolerances |
 | POST | `/reconcile/inject/{scenario_code}` | Add `SCN-301` … `SCN-304` |
 | POST | `/anomalies/{tx_id}/resolve` | `{"resolution_note": "...", "action": "APPROVE_VARIANCE"}` |
+| POST | `/anomalies/resolve-batch` | `{"tx_ids": ["TX-9010", "TX-9012"], "action": "...", "resolution_note": "..."}`: one decision for up to 100 open anomalies of the same cause, all or nothing |
 | GET | `/export/excel` | Download the audit pack |
 | GET | `/export/template` | Download the `Ledger_Input` template |
 | GET | `/schema/ledger` | Columns of the input sheet |

@@ -1,36 +1,29 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { Search, X } from 'lucide-react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
-import type { MessageKey } from '../i18n/messages/types';
+import { isSelectable, pruneSelection, summarize, toggle, toggleAll } from '../lib/selection';
 import { FILTERS, type StatusFilter } from '../lib/statusMeta';
-import { applyView, nextSort, type Sort, type SortKey } from '../lib/tableView';
+import { applyView, nextSort, type Sort } from '../lib/tableView';
 import type { BatchState, LiveRun } from '../types/reconciliation';
+import { BulkResolveBar } from './BulkResolveBar';
 import { MatchRow } from './MatchRow';
+import { MatchTableHead } from './MatchTableHead';
 
 interface Props {
   state: BatchState;
   liveRun: LiveRun | null;
   onOpen: (txId: string) => void;
+  /** Reports the ids shown, in order, so the drawer can step through them. */
+  onShownChange: (txIds: string[]) => void;
 }
 
-const HEADERS: { key: MessageKey; sort?: SortKey; align?: 'right' }[] = [
-  { key: 'col.txId', sort: 'tx_id' },
-  { key: 'col.counterparty', sort: 'counterparty' },
-  { key: 'col.erp', sort: 'erp_amount', align: 'right' },
-  { key: 'col.bank', sort: 'bank_amount', align: 'right' },
-  { key: 'col.tax' },
-  { key: 'col.variance', sort: 'variance', align: 'right' },
-  { key: 'col.classification', sort: 'status' },
-];
-
-const ARIA_SORT = { asc: 'ascending', desc: 'descending' } as const;
-
-export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
+export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Props) {
   const { t, fmt } = useI18n();
   const searchId = useId();
   const [filter, setFilter] = useState<StatusFilter>('ALL');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
   const counts = useMemo(() => {
     const result: Record<string, number> = { ALL: state.records.length };
@@ -42,6 +35,15 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
     () => applyView(state.records, { filter, query, sort }),
     [state.records, filter, query, sort],
   );
+
+  useEffect(() => onShownChange(rows.map((record) => record.tx_id)), [rows, onShownChange]);
+  // A record resolved elsewhere, or matched by new rules, leaves the selection.
+  useEffect(() => setSelected((current) => pruneSelection(current, state.records)), [state.records]);
+
+  const selection = useMemo(() => summarize(selected, state.records), [selected, state.records]);
+  const selectable = rows.filter(isSelectable);
+  const allSelected =
+    selectable.length === 0 ? null : selectable.every((record) => selected.has(record.tx_id));
 
   return (
     <section aria-labelledby="match-table-title" className="panel overflow-hidden">
@@ -98,40 +100,17 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
         </p>
       </div>
 
+      <BulkResolveBar selection={selection} onClear={() => setSelected(new Set())} />
+
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-sm">
-          <thead>
-            <tr className="bg-obsidian/60 text-xs uppercase tracking-wide text-slate-400">
-              {HEADERS.map((header) => {
-                const label = `${t(header.key)}${header.key === 'col.variance' ? ` (${state.currency.code})` : ''}`;
-                const active = header.sort !== undefined && sort?.key === header.sort ? sort : null;
-                const Icon = active ? (active.direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
-                const sortKey = header.sort;
-                return (
-                  <th
-                    key={header.key}
-                    scope="col"
-                    aria-sort={active ? ARIA_SORT[active.direction] : sortKey ? 'none' : undefined}
-                    className={`px-3 py-2 font-semibold ${header.align === 'right' ? 'text-right' : 'text-left'}`}
-                  >
-                    {sortKey ? (
-                      <button
-                        type="button"
-                        title={t('sort.by', { column: label })}
-                        onClick={() => setSort((current) => nextSort(current, sortKey))}
-                        className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-slate-100 ${active ? 'text-cyan-200' : ''}`}
-                      >
-                        {label}
-                        <Icon aria-hidden="true" className={`h-3.5 w-3.5 ${active ? '' : 'opacity-40'}`} />
-                      </button>
-                    ) : (
-                      label
-                    )}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
+        <table className="w-full min-w-[1020px] border-collapse text-sm">
+          <MatchTableHead
+            currencyCode={state.currency.code}
+            sort={sort}
+            onSort={(key) => setSort((current) => nextSort(current, key))}
+            allSelected={allSelected}
+            onToggleAll={() => setSelected((current) => toggleAll(current, rows))}
+          />
           <tbody>
             {rows.map((record) => (
               <MatchRow
@@ -139,6 +118,8 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
                 record={record}
                 liveStatus={liveRun?.overlay ? (liveRun.verdicts[record.tx_id] ?? null) : undefined}
                 current={liveRun?.progress?.tx_id === record.tx_id}
+                selected={selected.has(record.tx_id)}
+                onToggle={(txId) => setSelected((current) => toggle(current, txId))}
                 onOpen={onOpen}
               />
             ))}

@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck } from 'lucide-react';
 import { EM_DASH, formatDate } from '../i18n/format';
 import { useI18n } from '../i18n/I18nProvider';
+import { isSelectable } from '../lib/selection';
 import { TAX_CHECK_OK } from '../lib/statusMeta';
 import type { MatchStatus, ReconciledRecord } from '../types/reconciliation';
 import { PendingBadge, StatusBadge } from './StatusBadge';
@@ -30,16 +31,30 @@ interface Props {
   /** ``undefined`` outside a live run; ``null`` while the record is still queued. */
   liveStatus: MatchStatus | null | undefined;
   current: boolean;
+  selected: boolean;
+  onToggle: (txId: string) => void;
   onOpen: (txId: string) => void;
 }
 
-export function MatchRow({ record, liveStatus, current, onOpen }: Props) {
+export function MatchRow({ record, liveStatus, current, selected, onToggle, onOpen }: Props) {
   const { t, fmt } = useI18n();
   const taxOk = TAX_CHECK_OK[record.tax_check] ?? false;
   const TaxIcon = taxOk ? CircleCheck : CircleAlert;
   const variance = record.variance;
+  const tone = current || selected ? 'bg-tolerance/10' : 'hover:bg-slate-800/40';
   return (
-    <tr className={`border-t border-edge align-top ${current ? 'bg-tolerance/10' : 'hover:bg-slate-800/40'}`}>
+    <tr className={`border-t border-edge align-top ${tone}`}>
+      <td className="w-8 px-3 py-3">
+        {isSelectable(record) && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggle(record.tx_id)}
+            aria-label={t('bulk.select', { id: record.tx_id })}
+            className="h-4 w-4 accent-cyan-500"
+          />
+        )}
+      </td>
       <th scope="row" className="whitespace-nowrap px-3 py-3 text-left font-normal">
         <button
           type="button"

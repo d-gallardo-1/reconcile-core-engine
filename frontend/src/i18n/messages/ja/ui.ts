@@ -154,4 +154,18 @@ export const ui: UiMessages = {
   'tol.rate': '照合率は {percent} になります',
   'tol.apply': 'ルールを適用',
   'tol.discard': '破棄',
+
+  // Bulk resolution and keyboard navigation between records.
+  'bulk.select': '{id} を選択',
+  'bulk.selectAll': '表示中の未解決の異常をすべて選択',
+  'bulk.title': '選択した異常を解決',
+  'bulk.selected_one': '{count} 件の異常を選択中',
+  'bulk.selected_other': '{count} 件の異常を選択中',
+  'bulk.total': '差異の合計 {amount}',
+  'bulk.mixed': '選択に異なる原因が混在しています。1つのメモでまとめて解決するには、同じ原因の異常を選択してください。',
+  'bulk.clear': '選択を解除',
+  'drawer.previous': '前の記録',
+  'drawer.next': '次の記録',
+  'drawer.position': '{position} / {total}',
+  'drawer.keys': '↑ と ↓ で表に表示されている記録を移動できます。',
 };

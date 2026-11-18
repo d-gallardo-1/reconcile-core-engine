@@ -1,7 +1,8 @@
 import { Languages, LayoutDashboard, Workflow } from 'lucide-react';
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { LOCALES } from '../i18n/locales';
+import { navigationOrder, neighbours } from '../lib/navigation';
 import type { BatchState, LiveRun, StreamStatus } from '../types/reconciliation';
 import { AnomalyResolutionPanel } from './AnomalyResolutionPanel';
 import { ExposurePanel } from './ExposurePanel';
@@ -28,10 +29,16 @@ export function AppShell({ state, status, liveRun }: Props) {
   const languageId = useId();
   const [view, setView] = useState<View>('cockpit');
   const [openTxId, setOpenTxId] = useState<string | null>(null);
+  const [shownIds, setShownIds] = useState<string[]>([]);
   const closeDrawer = useCallback(() => setOpenTxId(null), []);
 
   // Looked up on every render so the drawer follows live updates from other tabs.
   const openRecord = state?.records.find((record) => record.tx_id === openTxId) ?? null;
+  // The drawer steps through what the table shows (its filter, search and order).
+  const around = useMemo(() => {
+    const all = state?.records.map((record) => record.tx_id) ?? [];
+    return neighbours(navigationOrder(shownIds, all, openTxId), openTxId);
+  }, [state?.records, shownIds, openTxId]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col gap-4 p-4 lg:p-6">
@@ -96,7 +103,12 @@ export function AppShell({ state, status, liveRun }: Props) {
             <>
               <ToleranceAndDemoBar state={state} liveRun={liveRun} />
               <ExposurePanel state={state} onOpen={setOpenTxId} />
-              <ThreeWayMatchTable state={state} liveRun={liveRun} onOpen={setOpenTxId} />
+              <ThreeWayMatchTable
+                state={state}
+                liveRun={liveRun}
+                onOpen={setOpenTxId}
+                onShownChange={setShownIds}
+              />
             </>
           ) : (
             <RulePipelineInspector state={state} />
@@ -104,7 +116,14 @@ export function AppShell({ state, status, liveRun }: Props) {
         </main>
       )}
 
-      {openRecord && <AnomalyResolutionPanel record={openRecord} onClose={closeDrawer} />}
+      {openRecord && (
+        <AnomalyResolutionPanel
+          record={openRecord}
+          neighbours={around}
+          onNavigate={setOpenTxId}
+          onClose={closeDrawer}
+        />
+      )}
     </div>
   );
 }

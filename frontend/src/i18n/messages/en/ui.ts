@@ -156,4 +156,19 @@ export const ui = {
   'tol.rate': 'Match rate would be {percent}',
   'tol.apply': 'Apply Rules',
   'tol.discard': 'Discard',
+
+  // Bulk resolution and keyboard navigation between records.
+  'bulk.select': 'Select {id}',
+  'bulk.selectAll': 'Select every open anomaly shown',
+  'bulk.title': 'Resolve Selected Anomalies',
+  'bulk.selected_one': '{count} anomaly selected',
+  'bulk.selected_other': '{count} anomalies selected',
+  'bulk.total': 'Combined variance {amount}',
+  'bulk.mixed':
+    'The selection mixes different causes. Select anomalies of one cause to resolve them with one note.',
+  'bulk.clear': 'Clear selection',
+  'drawer.previous': 'Previous record',
+  'drawer.next': 'Next record',
+  'drawer.position': '{position} of {total}',
+  'drawer.keys': '↑ and ↓ move between the records shown in the table.',
 } as const;

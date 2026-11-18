@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -36,6 +37,21 @@ class ResolveRequest(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("resolution_note must not be blank")
+        return value
+
+
+class BulkResolveRequest(ResolveRequest):
+    """One decision and one note for several anomalies of the same cause."""
+
+    tx_ids: list[Annotated[str, Field(pattern=r"^[A-Za-z0-9-]{1,32}$")]] = Field(
+        min_length=1, max_length=100
+    )
+
+    @field_validator("tx_ids")
+    @classmethod
+    def _no_duplicates(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("tx_ids must not repeat a transaction")
         return value
 
 

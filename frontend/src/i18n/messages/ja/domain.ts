@@ -82,6 +82,7 @@ export const domain: DomainMessages = {
   'error.SCENARIO_ACTIVE': 'このシナリオはすでにバッチで有効です。',
   'error.ALREADY_RESOLVED': 'このレコードはすでに解決済みです。監査記録は変更できません。',
   'error.NOT_AN_OPEN_ANOMALY': 'このレコードは未解決の異常ではありません。',
+  'error.MIXED_ANOMALY_TYPES': '選択に異なる原因が混在しています。原因ごとに解決してください。',
   'error.UNKNOWN_SCENARIO': '不明なシナリオです。',
   'error.UNKNOWN_TRANSACTION': '不明な取引です。',
   'error.UNKNOWN_CURRENCY': 'この通貨はサポートされていません。',

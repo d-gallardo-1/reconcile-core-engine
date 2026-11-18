@@ -21,9 +21,12 @@ services:
       start_period: 5s
       retries: 5
     read_only: true
-    # Scratch space for libraries that need a temporary file.
+    # Scratch space for libraries that need a temporary file. It is capped:
+    # without a size, a tmpfs may grow to half of the host's memory. Uploaded
+    # workbooks are limited to 2 MB and 5,000 rows and the audit pack is of the
+    # same order, so 64 MB is ample; revisit it if those limits change.
     tmpfs:
-      - /tmp
+      - /tmp:size=64m
     cap_drop:
       - ALL
     security_opt:
@@ -41,8 +44,10 @@ services:
     ports:
       - "127.0.0.1:8081:8080"
     read_only: true
+    # Nginx keeps its pid file and temporary request bodies here. Request
+    # bodies are limited to 3 MB (client_max_body_size), so 32 MB is ample.
     tmpfs:
-      - /tmp
+      - /tmp:size=32m
     cap_drop:
       - ALL
     security_opt:

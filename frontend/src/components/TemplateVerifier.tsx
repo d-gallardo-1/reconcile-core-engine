@@ -16,7 +16,8 @@ export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number })
     event.target.value = ''; // allow choosing the same file again
     if (!file) return;
     if (file.size > maxUploadBytes) {
-      setOutcome({ file: file.name, error: 'The workbook is larger than 2 MB.' });
+      const limitMb = (maxUploadBytes / (1024 * 1024)).toFixed(0);
+      setOutcome({ file: file.name, error: `The workbook is larger than ${limitMb} MB.` });
       return;
     }
     setBusy(true);
@@ -73,8 +74,8 @@ export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number })
           </p>
           {errors.length > 0 && (
             <ul className="mt-2 list-disc space-y-1 pl-5">
-              {errors.map((message) => (
-                <li key={message}>{message}</li>
+              {errors.map((message, index) => (
+                <li key={`${index}-${message}`}>{message}</li>
               ))}
             </ul>
           )}

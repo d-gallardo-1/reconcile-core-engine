@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ToleranceConfig } from '../types/reconciliation';
 
 const AMOUNT_MAX = 50;
@@ -22,21 +22,27 @@ export function ToleranceControls({ tolerance, disabled, onCommit }: Props) {
   const amountId = useId();
   const daysId = useId();
   const [draft, setDraft] = useState<ToleranceConfig | null>(null);
+  // The draft that was last sent; a newer one is still waiting for its pause.
+  const sent = useRef<ToleranceConfig | null>(null);
   const shown = draft ?? tolerance;
 
   useEffect(() => {
     if (!draft) return;
     const timer = window.setTimeout(() => {
+      sent.current = draft;
       // A refused change (for example during a run) falls back to the server value.
       void onCommit(draft.amount_tolerance_gbp, draft.date_window_days).then((accepted) => {
-        if (!accepted) setDraft(null);
+        if (!accepted) setDraft((current) => (current === draft ? null : current));
       });
     }, COMMIT_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [draft, onCommit]);
 
-  // The server value changed (this tab's commit or another tab): it wins.
-  useEffect(() => setDraft(null), [tolerance.amount_tolerance_gbp, tolerance.date_window_days]);
+  // The server value changed (this tab's commit or another tab): it wins, unless
+  // the user has already moved on to a newer value that has not been sent yet.
+  useEffect(() => {
+    setDraft((current) => (current === sent.current ? null : current));
+  }, [tolerance.amount_tolerance_gbp, tolerance.date_window_days]);
 
   const setAmount = (raw: string) => {
     const value = Number(raw);
@@ -79,7 +85,9 @@ export function ToleranceControls({ tolerance, disabled, onCommit }: Props) {
             className="field num w-24"
           />
         </div>
-        <p className="mt-1 text-xs text-slate-500">£0 – £50 · absorbs wire fees and FX rounding</p>
+        <p className="mt-1 text-xs text-slate-500">
+          £0 – £{AMOUNT_MAX} · absorbs wire fees and FX rounding
+        </p>
       </div>
       <div>
         <label htmlFor={daysId} className="flex items-baseline justify-between text-sm text-slate-300">
@@ -110,7 +118,9 @@ export function ToleranceControls({ tolerance, disabled, onCommit }: Props) {
             className="field num w-24"
           />
         </div>
-        <p className="mt-1 text-xs text-slate-500">0 – 5 days · absorbs bank clearing lag</p>
+        <p className="mt-1 text-xs text-slate-500">
+          0 – {DAYS_MAX} days · absorbs bank clearing lag
+        </p>
       </div>
     </fieldset>
   );

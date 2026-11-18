@@ -15,7 +15,7 @@ export type AnomalyType =
 export type TaxStatus = 'REGISTERED' | 'CERTIFICATE_MISSING' | 'NOT_REGISTERED';
 export type TaxCheck = 'VERIFIED' | 'VAT_MISMATCH' | 'CERTIFICATE_MISSING' | 'NOT_REGISTERED';
 export type ResolutionAction = 'APPROVE_VARIANCE' | 'FLAG_FOR_CREDIT_NOTE' | 'REJECT';
-export type RunStatus = 'IDLE' | 'RUNNING' | 'COMPLETED';
+export type RunStatus = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 export type StreamStatus = 'CONNECTED' | 'RECONNECTING' | 'DISCONNECTED';
 
 export interface ToleranceConfig {
@@ -133,9 +133,11 @@ export interface VerifyResult {
   errors: string[];
 }
 
-/** Verdicts seen so far in a live run this tab watched from its first step. */
+/** The run in progress, as seen by this tab. */
 export interface LiveRun {
   runId: number;
   verdicts: Record<string, MatchStatus>;
   progress: ReconciliationProgress | null;
+  /** True while this tab has seen every step, so per-record verdicts are complete. */
+  overlay: boolean;
 }

@@ -74,7 +74,7 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
               <MatchRow
                 key={record.tx_id}
                 record={record}
-                liveStatus={liveRun ? (liveRun.verdicts[record.tx_id] ?? null) : undefined}
+                liveStatus={liveRun?.overlay ? (liveRun.verdicts[record.tx_id] ?? null) : undefined}
                 current={liveRun?.progress?.tx_id === record.tx_id}
                 onOpen={onOpen}
               />

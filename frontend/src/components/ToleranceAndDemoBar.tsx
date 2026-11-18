@@ -5,26 +5,32 @@ import { api } from '../lib/api';
 import type { BatchState, LiveRun } from '../types/reconciliation';
 import { ToleranceControls } from './ToleranceControls';
 
-const PASS_LABEL: Record<number, string> = {
-  1: 'Pass 1 of 3 · Exact Match',
-  2: 'Pass 2 of 3 · Fuzzy / Tolerance Match',
-  3: 'Pass 3 of 3 · Anomaly Detection',
-};
-
 function RunProgress({ state, liveRun }: { state: BatchState; liveRun: LiveRun | null }) {
   const { run } = state;
   if (run.status === 'IDLE') return null;
   const progress = liveRun?.progress;
   const running = run.status === 'RUNNING';
-  const percent = running ? (progress?.percent ?? run.percent) : 100;
-  const passNumber = progress?.pass_number ?? run.pass_number;
+  const failed = run.status === 'FAILED';
+  const percent = run.status === 'COMPLETED' ? 100 : (progress?.percent ?? run.percent);
+  // Pass names come from the server, so both views always use the same wording.
+  const passLabel = progress
+    ? `Pass ${progress.pass_number} of 3 · ${progress.pass_name}`
+    : run.pass_number > 0
+      ? `Pass ${run.pass_number} of 3`
+      : 'Starting run…';
   return (
     <div aria-live="polite" className="mt-4 border-t border-edge pt-4">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span className="text-slate-300">
-          {running
-            ? (PASS_LABEL[passNumber] ?? 'Starting run…')
-            : `Run #${run.run_id} completed · ${run.total} rule evaluations`}
+          {running && passLabel}
+          {failed && (
+            <span role="alert" className="text-red-300">
+              Run #{run.run_id} stopped before finishing ({run.processed} of {run.total} rule
+              evaluations). Record statuses below are still correct; run it again.
+            </span>
+          )}
+          {run.status === 'COMPLETED' &&
+            `Run #${run.run_id} completed · ${run.total} rule evaluations`}
         </span>
         <span className="num text-slate-400">
           {running && progress?.tx_id ? `${progress.tx_id} · ` : ''}

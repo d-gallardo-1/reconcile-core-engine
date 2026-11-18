@@ -9,6 +9,9 @@ import type {
 // Same-origin API: Nginx (Docker) or the Vite dev server proxies /api to the backend.
 export const API_BASE = '/api/v1';
 
+// A request that gets no answer is abandoned, so the controls do not stay locked.
+const REQUEST_TIMEOUT_MS = 15000;
+
 /** Uses the server's own explanation when it sends one, so errors are readable. */
 async function errorMessage(response: Response, fallback: string): Promise<string> {
   try {
@@ -21,7 +24,20 @@ async function errorMessage(response: Response, fallback: string): Promise<strin
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, init);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (cause) {
+    const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError';
+    throw new Error(
+      timedOut
+        ? 'The engine did not answer in time. Check the connection and try again.'
+        : 'The engine could not be reached.',
+    );
+  }
   if (!response.ok) {
     const fallback = `${init?.method ?? 'GET'} ${path} failed with HTTP ${response.status}`;
     throw new Error(await errorMessage(response, fallback));

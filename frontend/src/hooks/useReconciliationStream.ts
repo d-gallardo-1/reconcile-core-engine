@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API_BASE } from '../lib/api';
+import { applyProgress, nextLiveRun } from '../lib/liveRun';
 import type {
   BatchState,
   LiveRun,
@@ -10,7 +11,8 @@ import type {
 const RETRY_MS = 3000;
 // The backend sends an event or a heartbeat at least every 5 s. If nothing
 // arrives for this long the connection is considered dead and rebuilt. This
-// catches a proxy that keeps the browser side open after the backend has gone.
+// catches a proxy that keeps the browser side open after the backend has gone,
+// and a connection attempt that never gets an answer.
 const STALE_MS = 8000;
 const FAILURES_BEFORE_DISCONNECTED = 3;
 
@@ -18,24 +20,6 @@ interface StreamData {
   state: BatchState | null;
   status: StreamStatus;
   liveRun: LiveRun | null;
-}
-
-/** Applies a full state event. A run is followed live only from its first step. */
-function nextLiveRun(current: LiveRun | null, state: BatchState): LiveRun | null {
-  if (state.run.status !== 'RUNNING') return null;
-  if (current?.runId === state.run.run_id) return current;
-  return state.run.processed === 0
-    ? { runId: state.run.run_id, verdicts: {}, progress: null }
-    : null;
-}
-
-function applyProgress(current: LiveRun | null, progress: ReconciliationProgress): LiveRun | null {
-  if (!current || current.runId !== progress.run_id) return current;
-  const verdicts =
-    progress.decided && progress.tx_id && progress.classification
-      ? { ...current.verdicts, [progress.tx_id]: progress.classification }
-      : current.verdicts;
-  return { ...current, verdicts, progress };
 }
 
 /**
@@ -65,13 +49,13 @@ export function useReconciliationStream(): StreamData {
 
     const scheduleRetry = () => {
       source?.close();
+      window.clearTimeout(staleTimer);
       window.clearTimeout(retryTimer);
       retryTimer = window.setTimeout(connect, RETRY_MS);
     };
 
-    const alive = () => {
-      failures = 0;
-      setStatus('CONNECTED');
+    // Armed on every connection attempt and on every event received.
+    const armStaleTimer = () => {
       window.clearTimeout(staleTimer);
       staleTimer = window.setTimeout(() => {
         markFailure();
@@ -79,18 +63,35 @@ export function useReconciliationStream(): StreamData {
       }, STALE_MS);
     };
 
-    const onState = (event: MessageEvent<string>) => {
-      alive();
-      const next = JSON.parse(event.data) as BatchState;
-      setState(next);
-      setLiveRun((current) => nextLiveRun(current, next));
+    const alive = () => {
+      failures = 0;
+      setStatus('CONNECTED');
+      armStaleTimer();
     };
 
-    const onProgress = (event: MessageEvent<string>) => {
-      alive();
-      const progress = JSON.parse(event.data) as ReconciliationProgress;
+    /** Parses first: a malformed event is a stream failure, not a live connection. */
+    const handle =
+      <T,>(apply: (payload: T) => void) =>
+      (event: MessageEvent<string>) => {
+        let payload: T;
+        try {
+          payload = JSON.parse(event.data) as T;
+        } catch {
+          markFailure();
+          scheduleRetry();
+          return;
+        }
+        alive();
+        apply(payload);
+      };
+
+    const onState = handle<BatchState>((next) => {
+      setState(next);
+      setLiveRun((current) => nextLiveRun(current, next));
+    });
+    const onProgress = handle<ReconciliationProgress>((progress) => {
       setLiveRun((current) => applyProgress(current, progress));
-    };
+    });
 
     function connect() {
       if (disposed) return;
@@ -104,6 +105,7 @@ export function useReconciliationStream(): StreamData {
         markFailure();
         if (source?.readyState === EventSource.CLOSED) scheduleRetry();
       };
+      armStaleTimer();
     }
 
     connect();

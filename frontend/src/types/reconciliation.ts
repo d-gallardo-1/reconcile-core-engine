@@ -10,10 +10,16 @@ export type AnomalyType =
   | 'WITHHOLDING_GAP'
   | 'DUPLICATE_SETTLEMENT'
   | 'ORPHAN_ERP_ACCRUAL'
-  | 'UNBOOKED_BANK_DEBIT';
+  | 'UNBOOKED_BANK_DEBIT'
+  | 'INCOMPLETE_SOURCE_DATA';
 
 export type TaxStatus = 'REGISTERED' | 'CERTIFICATE_MISSING' | 'NOT_REGISTERED';
-export type TaxCheck = 'VERIFIED' | 'VAT_MISMATCH' | 'CERTIFICATE_MISSING' | 'NOT_REGISTERED';
+export type TaxCheck =
+  | 'VERIFIED'
+  | 'VAT_MISMATCH'
+  | 'RATE_MISSING'
+  | 'CERTIFICATE_MISSING'
+  | 'NOT_REGISTERED';
 export type ResolutionAction = 'APPROVE_VARIANCE' | 'FLAG_FOR_CREDIT_NOTE' | 'REJECT';
 export type RunStatus = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 export type StreamStatus = 'CONNECTED' | 'RECONNECTING' | 'DISCONNECTED';

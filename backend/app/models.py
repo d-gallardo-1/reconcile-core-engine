@@ -42,6 +42,8 @@ class AnomalyType(str, Enum):
     DUPLICATE_SETTLEMENT = "DUPLICATE_SETTLEMENT"
     ORPHAN_ERP_ACCRUAL = "ORPHAN_ERP_ACCRUAL"
     UNBOOKED_BANK_DEBIT = "UNBOOKED_BANK_DEBIT"
+    #: A value needed for the comparison is absent (a date or the VAT rate).
+    INCOMPLETE_SOURCE_DATA = "INCOMPLETE_SOURCE_DATA"
 
 
 class TaxStatus(str, Enum):
@@ -57,6 +59,7 @@ class TaxCheck(str, Enum):
 
     VERIFIED = "VERIFIED"
     VAT_MISMATCH = "VAT_MISMATCH"
+    RATE_MISSING = "RATE_MISSING"
     CERTIFICATE_MISSING = "CERTIFICATE_MISSING"
     NOT_REGISTERED = "NOT_REGISTERED"
 

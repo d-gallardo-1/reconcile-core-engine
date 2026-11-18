@@ -17,7 +17,7 @@ from app.excel_io import MAX_ROWS, WorkbookError, parse_ledger_workbook
 from app.excel_schema import LEDGER_COLUMNS, LEDGER_SHEET
 from app.main import build_engine, create_app
 from app.matching import reconcile
-from app.models import LedgerTransaction, MatchStatus, TaxCheck, TaxStatus
+from app.models import AnomalyType, LedgerTransaction, MatchStatus, TaxCheck, TaxStatus
 
 from .conftest import API
 
@@ -63,7 +63,30 @@ def test_row_limit_counts_blank_rows_and_data_beyond_the_schema():
     content = workbook_bytes([GOOD], extra_cell=(MAX_ROWS + 500, 20, "x"))
     with pytest.raises(WorkbookError) as raised:
         parse_ledger_workbook(content)
-    assert f"more than {MAX_ROWS} rows" in str(raised.value)
+    message = str(raised.value)
+    assert f"more than {MAX_ROWS} rows" in message
+    # The user is told why a short-looking sheet is refused and what to do.
+    assert "Blank and formatted rows count" in message
+
+
+def _numbered_rows(count: int) -> list[list]:
+    return [[f"TX-{index}"] + GOOD[1:] for index in range(count)]
+
+
+def test_a_sheet_with_exactly_the_row_limit_is_accepted():
+    assert len(parse_ledger_workbook(workbook_bytes(_numbered_rows(MAX_ROWS)))) == MAX_ROWS
+
+
+def test_one_data_row_over_the_limit_is_refused():
+    with pytest.raises(WorkbookError):
+        parse_ledger_workbook(workbook_bytes(_numbered_rows(MAX_ROWS + 1)))
+
+
+@pytest.mark.parametrize("cell", ["1", " 1 ", 1, 1.0])
+def test_whole_numbers_typed_as_text_are_accepted(cell):
+    # Text-formatted numerals are common in hand-edited workbooks.
+    parsed = parse_ledger_workbook(workbook_bytes([GOOD[:8] + [cell] + GOOD[9:]]))
+    assert parsed[0].bank_settlement_count == 1
 
 
 def _tx(**overrides) -> LedgerTransaction:
@@ -80,13 +103,24 @@ def _tx(**overrides) -> LedgerTransaction:
 def test_a_record_without_a_date_is_an_anomaly_with_an_explanation(missing):
     record = reconcile(_tx(**{missing: None}), default_tolerance())
     assert record.status is MatchStatus.ANOMALY
+    # Absent data is its own category, not a shift that was measured.
+    assert record.anomaly_type is AnomalyType.INCOMPLETE_SOURCE_DATA
     assert "date is missing" in record.explanation
 
 
-def test_vat_is_not_reported_verified_when_the_rate_is_missing():
-    record = reconcile(_tx(vat_rate=None), default_tolerance())
-    assert record.tax_check is TaxCheck.VAT_MISMATCH
+@pytest.mark.parametrize("registry_vat", [Decimal("20.00"), None])
+def test_a_missing_vat_rate_is_reported_as_missing_not_as_a_mismatch(registry_vat):
+    record = reconcile(_tx(vat_rate=None, tax_vat_amount_gbp=registry_vat), default_tolerance())
+    assert record.tax_check is TaxCheck.RATE_MISSING
     assert record.status is MatchStatus.ANOMALY
+    assert record.anomaly_type is AnomalyType.INCOMPLETE_SOURCE_DATA
+    assert "no VAT rate" in record.explanation
+
+
+def test_a_real_vat_difference_is_still_a_mismatch():
+    record = reconcile(_tx(tax_vat_amount_gbp=Decimal("5.71")), default_tolerance())
+    assert record.tax_check is TaxCheck.VAT_MISMATCH
+    assert record.anomaly_type is AnomalyType.VAT_MISMATCH
 
 
 def test_complete_record_still_matches_exactly():

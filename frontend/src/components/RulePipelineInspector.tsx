@@ -35,7 +35,7 @@ function passes(state: BatchState): PassCard[] {
       number: 3,
       name: 'Unreconciled Anomaly Detection',
       status: 'ANOMALY',
-      rule: 'Everything left over is an anomaly and gets the most specific cause: unbooked debit, orphan accrual, duplicate settlement, withholding gap, registry or VAT mismatch, amount or date outside tolerance.',
+      rule: 'Everything left over is an anomaly and gets the most specific cause: unbooked debit, orphan accrual, duplicate settlement, withholding gap, registry or VAT mismatch, incomplete source data, amount or date outside tolerance.',
       count: kpis.anomaly_count + kpis.resolved_count,
     },
   ];

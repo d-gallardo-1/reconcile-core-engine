@@ -162,7 +162,10 @@ def parse_ledger_workbook(filepath: Target | bytes) -> list[LedgerTransaction]:
             # Checked before anything else, so blank rows and rows with data
             # only outside the schema columns cannot keep the loop running.
             if number > MAX_ROWS + 1:
-                errors.append(f"The sheet has more than {MAX_ROWS} rows.")
+                errors.append(
+                    f"The sheet has more than {MAX_ROWS} rows. Blank and formatted rows "
+                    "count: delete the unused rows below the data."
+                )
                 break
             cells = tuple(cells[: len(expected)])
             if all(cell is None for cell in cells):

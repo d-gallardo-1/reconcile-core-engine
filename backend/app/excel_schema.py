@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -112,7 +113,12 @@ def from_cell(column: Column, value: Any) -> Any:
         except ValueError:
             raise ValueError("must be a date (YYYY-MM-DD)") from None
     if column.kind == "integer":
-        if isinstance(value, (bool, str)):
+        if isinstance(value, str):
+            # Whole numbers typed as text are common in hand-edited workbooks.
+            if not re.fullmatch(r"[+-]?\d{1,9}", value.strip()):
+                raise ValueError("must be a whole number")
+            return int(value)
+        if isinstance(value, bool):
             raise ValueError("must be a whole number")
         try:
             whole = float(value).is_integer()

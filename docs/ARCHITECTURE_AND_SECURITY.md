@@ -43,7 +43,9 @@ plain-language explanation.
 3. **Anomaly detection.** Everything else. The cause is the first that applies, from
    most to least specific: unbooked bank debit, orphan ERP accrual, duplicate
    settlement, withholding gap (certificate missing), missing registry record, VAT
-   mismatch, amount outside tolerance, date outside the window.
+   mismatch, incomplete source data (no VAT rate, or a missing posting or clearing
+   date), amount outside tolerance, date outside the window. Absent data is reported
+   as absent, never as a mismatch or a shift that was measured.
 
 The functions are pure: the same batch and tolerances always give the same verdicts.
 Changing a tolerance re-evaluates the whole batch immediately. Structural problems
@@ -100,7 +102,7 @@ Controls that exist in this repository:
 | Containers run as non-root, read-only filesystem, all capabilities dropped, `no-new-privileges` | `docker-compose.yml`, Dockerfiles |
 | Input validation with bounds on every request body and path parameter | `backend/app/api/` |
 | Upload limit of 2 MB, enforced while reading the body | `backend/app/api/export_routes.py` |
-| Hardened XML parsing for workbooks (defusedxml), read-only parsing, 5,000-row limit that also counts blank rows, bounded numeric values | `backend/app/excel_io.py`, `backend/app/excel_schema.py` |
+| Hardened XML parsing for workbooks (defusedxml), read-only parsing, 5,000-row limit that also counts blank and formatted rows (the error says so), bounded numeric values | `backend/app/excel_io.py`, `backend/app/excel_schema.py` |
 | Workbook parsing runs off the event loop, so an upload does not stall the stream | `backend/app/api/export_routes.py` |
 | Spreadsheet formula injection: text starting with `=`, `+`, `-` or `@` is stored as text | `backend/app/excel_schema.py` |
 | Uploaded workbooks are verified and discarded; they never replace the active batch | `backend/app/api/export_routes.py` |

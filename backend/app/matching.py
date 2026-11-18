@@ -58,7 +58,7 @@ def tax_check(tx: LedgerTransaction) -> TaxCheck:
     if tx.erp_amount_gbp is None:
         return TaxCheck.VERIFIED  # nothing to compare; pass 3 reports the missing ERP entry
     if tx.vat_rate is None:
-        return TaxCheck.VAT_MISMATCH  # a registry amount cannot be checked without a rate
+        return TaxCheck.RATE_MISSING  # nothing can be checked without a rate
     if tx.tax_vat_amount_gbp != expected_vat(tx.erp_amount_gbp, tx.vat_rate):
         return TaxCheck.VAT_MISMATCH
     return TaxCheck.VERIFIED
@@ -130,7 +130,10 @@ def pass_anomaly(tx: LedgerTransaction, tolerance: ToleranceConfig) -> Verdict:
         why = "Invoice is missing from the tax/VAT registry."
     elif check is TaxCheck.VAT_MISMATCH:
         kind = AnomalyType.VAT_MISMATCH
-        why = "VAT in the tax registry cannot be reconciled with the ERP VAT rate."
+        why = "VAT recorded in the tax registry differs from the ERP VAT rate."
+    elif check is TaxCheck.RATE_MISSING:
+        kind = AnomalyType.INCOMPLETE_SOURCE_DATA
+        why = "The ERP entry has no VAT rate, so the registry VAT cannot be checked."
     elif abs(delta) > tolerance.amount_tolerance_gbp:
         kind = AnomalyType.AMOUNT_VARIANCE
         why = (
@@ -138,7 +141,7 @@ def pass_anomaly(tx: LedgerTransaction, tolerance: ToleranceConfig) -> Verdict:
             f"{tolerance.amount_tolerance_gbp:.2f} GBP tolerance."
         )
     elif shift is None:
-        kind = AnomalyType.SETTLEMENT_DATE_SHIFT
+        kind = AnomalyType.INCOMPLETE_SOURCE_DATA
         why = "A posting or clearing date is missing, so the settlement cannot be dated."
     else:
         kind = AnomalyType.SETTLEMENT_DATE_SHIFT

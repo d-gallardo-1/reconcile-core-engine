@@ -56,6 +56,7 @@ export const STATUS_META: Record<MatchStatus, StatusMeta> = {
 export const TAX_CHECK_LABEL: Record<TaxCheck, { label: string; ok: boolean }> = {
   VERIFIED: { label: 'VAT verified', ok: true },
   VAT_MISMATCH: { label: 'VAT mismatch', ok: false },
+  RATE_MISSING: { label: 'VAT rate missing', ok: false },
   CERTIFICATE_MISSING: { label: 'Certificate missing', ok: false },
   NOT_REGISTERED: { label: 'Not in registry', ok: false },
 };

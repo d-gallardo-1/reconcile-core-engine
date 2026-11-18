@@ -3,7 +3,7 @@
 **On-premises multi-source reconciliation engine for ERP ledgers, bank feeds and tax
 registries, with live progress over Server-Sent Events.**
 
-> **Reference architecture demo.** The fictional entity *Veritas Ledger Systems — UK & EU
+> **Reference architecture demo.** The fictional entity *Veritas Ledger Systems — International
 > Audit Division* and every counterparty, invoice and amount are synthetic. The service
 > is not connected to any ERP, bank or tax authority, has no authentication, and keeps
 > its state in memory. It shows how such an engine can be built; it is not a finished
@@ -31,7 +31,9 @@ cannot be edited afterwards.
 
 ## What you can do in the demo
 
-- Move the **amount tolerance** (£0–£50) and **date window** (0–5 days) and watch the
+- Pick the **batch currency** (GBP, EUR, USD, CHF, BRL, MXN, CNY, INR, JPY, CLP) and the
+  **interface language** (English, Spanish, Portuguese, Simplified Chinese, Japanese).
+- Move the **amount tolerance** and **date window** (0–5 days) and watch the
   three tolerance cases flip between matched and anomaly at once.
 - Press **Run Live 3-Pass Reconciliation** and follow each record through the passes;
   the progress is streamed, so a second browser tab shows the same run.
@@ -39,10 +41,10 @@ cannot be edited afterwards.
 
   | Code | Cause | Synthetic case |
   | --- | --- | --- |
-  | `SCN-301` | `WITHHOLDING_GAP` | `INV-2026-881`: ERP £18,000.00 vs bank £16,200.00, no retention certificate |
-  | `SCN-302` | `DUPLICATE_SETTLEMENT` | `INV-2026-884`: settled 2 × £3,450.00 against one ERP entry |
-  | `SCN-303` | `ORPHAN_ERP_ACCRUAL` | `INV-2026-890`: £6,120.00 in ERP and registry, nothing in the bank feed |
-  | `SCN-304` | `UNBOOKED_BANK_DEBIT` | `DD-UK-4419`: £2,950.00 bank debit with no ERP entry |
+  | `SCN-301` | `WITHHOLDING_GAP` | `INV-2026-881`: ERP 18,000.00 vs bank 16,200.00, no retention certificate |
+  | `SCN-302` | `DUPLICATE_SETTLEMENT` | `INV-2026-884`: settled 2 × 3,450.00 against one ERP entry |
+  | `SCN-303` | `ORPHAN_ERP_ACCRUAL` | `INV-2026-890`: 6,120.00 in ERP and registry, nothing in the bank feed |
+  | `SCN-304` | `UNBOOKED_BANK_DEBIT` | `DD-4419`: 2,950.00 bank debit with no ERP entry |
 
 - Open any record to compare the three sources side by side and, for an anomaly,
   **Approve Variance**, **Flag for Credit Note** or **Reject Entry** with an audit note.
@@ -52,7 +54,8 @@ cannot be edited afterwards.
   workbook against the schema.
 
 The default batch holds 15 transactions: 9 exact matches, 3 tolerance matches and 3
-anomalies, at the default tolerances of ±£15.00 and ±2 days.
+anomalies, at the default tolerances (±15.00 in GBP, scaled for other currencies, and
+±2 days). The amounts below are the GBP figures.
 
 ## Quickstart
 
@@ -125,6 +128,20 @@ FastAPI, single worker
 - **Small modules.** No source file is longer than 200 lines;
   `scripts/check_file_length.py` enforces it in CI.
 
+### Currencies and languages
+
+- **Currency.** Every input row carries an ISO 4217 code and a batch holds exactly one
+  currency. Amounts must fit the currency's smallest unit (no decimals for JPY or CLP),
+  VAT is rounded to it, and the tolerance range scales with it.
+- **Language.** The UI ships typed dictionaries (`frontend/src/i18n/messages/<code>/`).
+  English defines the keys, so a missing key in another language fails the build. To add
+  a language, write its two dictionary files and add one entry to `i18n/locales.ts`.
+- **Backend text is code-based.** Verdict explanations and API errors carry a stable code
+  and raw parameters; the UI turns them into a sentence in the active language and
+  formats amounts with the browser's `Intl` API. The English sentence stays in the
+  payload as a fallback and is what the Excel audit pack contains.
+- No translation library and no external resources are used.
+
 ### API (`/api/v1`)
 
 | Method | Path | Purpose |
@@ -132,8 +149,9 @@ FastAPI, single worker
 | GET | `/health` | Liveness and subscriber count |
 | GET | `/batches/current` | Summary, KPIs, all records, active tolerances |
 | GET | `/stream` | SSE: `snapshot`, `state_update`, `reconciliation_progress`, `heartbeat` |
+| POST | `/batches/currency` | `{"currency": "JPY"}`: load the default batch in another currency |
 | POST | `/reconcile/run` | Start a live 3-pass run (202). While it runs, every other change answers 409 |
-| POST | `/reconcile/tolerance` | `{"amount_tolerance_gbp": 15, "date_window_days": 2}` |
+| POST | `/reconcile/tolerance` | `{"amount_tolerance": 15, "date_window_days": 2}`; the limit depends on the currency |
 | POST | `/reconcile/reset` | Restore the default batch and tolerances |
 | POST | `/reconcile/inject/{scenario_code}` | Add `SCN-301` … `SCN-304` |
 | POST | `/anomalies/{tx_id}/resolve` | `{"resolution_note": "...", "action": "APPROVE_VARIANCE"}` |
@@ -171,7 +189,14 @@ Deliberately not built:
   partial settlements, missing references), which this demo does not attempt.
 - **Simplified tax model.** One VAT rate per invoice and a single registry status. It
   is not tax advice and does not model any jurisdiction's rules.
-- **Single currency.** All amounts are GBP; FX is represented only as a rounding delta.
+- **One currency per batch, no FX.** A batch is reconciled in a single currency and a
+  workbook that mixes currencies is refused. There is no conversion between currencies:
+  switching currency re-denominates the synthetic batch with a fixed illustrative factor,
+  not a market rate.
+- **Partly translated.** The interface is translated; the Excel audit pack, workbook
+  validation messages and the schema table stay in English. The Spanish, Portuguese,
+  Chinese and Japanese texts were machine-written and have not been reviewed by native
+  speakers.
 
 ## License
 

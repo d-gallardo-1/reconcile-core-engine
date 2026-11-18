@@ -4,7 +4,7 @@ This document describes how `reconcile-core-engine` is built, what protects it, 
 what a real deployment would still need.
 
 **Scope reminder.** This is a reference architecture demonstration. All data belongs to
-the fictional *Veritas Ledger Systems — UK & EU Audit Division* and is synthetic. No
+the fictional *Veritas Ledger Systems — International Audit Division* and is synthetic. No
 real ledger, bank or tax record is used anywhere in the repository.
 
 ## 1. Components
@@ -24,6 +24,9 @@ second worker would hold a different copy and clients would disagree.
 
 One input row (`LedgerTransaction`) holds what the three sources say about one invoice:
 
+- **Currency:** an ISO 4217 code. One currency per batch; a workbook that mixes
+  currencies is refused, and an amount with more decimals than the currency allows is
+  a row error.
 - **Source A, ERP general ledger:** gross amount, posting date, VAT rate.
 - **Source B, bank settlement feed:** amount per settlement, clearing date, number of
   settlements found.
@@ -31,8 +34,10 @@ One input row (`LedgerTransaction`) holds what the three sources say about one i
   `NOT_REGISTERED`) and the VAT amount held.
 
 The engine derives, per row: the variance (bank total minus ERP amount), the settlement
-shift in days, the registry check, the verdict, the pass that decided it and a
-plain-language explanation.
+shift in days, the registry check, the verdict, the pass that decided it and an
+explanation. The explanation is a stable code with its parameters (for example
+`AMOUNT_OUTSIDE_TOLERANCE` with `delta` and `tolerance`) plus the English sentence;
+the UI renders the code in the user's language.
 
 ## 3. The three passes (`backend/app/matching.py`)
 

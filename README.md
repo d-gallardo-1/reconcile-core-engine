@@ -1,5 +1,7 @@
 # reconcile-core-engine
 
+[![CI](https://github.com/d-gallardo-1/reconcile-core-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/d-gallardo-1/reconcile-core-engine/actions/workflows/ci.yml)
+
 **On-premises multi-source reconciliation engine for ERP ledgers, bank feeds and tax
 registries, with live progress over Server-Sent Events.**
 

@@ -97,7 +97,7 @@ export const ui: UiMessages = {
   'src.noSettlement': '決済なし',
   'src.settlements': '決済',
   'src.total': '決済合計',
-  'src.clearing': '決済日',
+  'src.clearing': '銀行処理日',
   'src.registryStatus': '登録簿ステータス',
   'src.vatRecorded': '記録されたVAT',
   'src.check': '検証',

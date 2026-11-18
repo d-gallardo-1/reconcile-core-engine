@@ -61,7 +61,7 @@ export const domain: DomainMessages = {
   'explanation.AMOUNT_OUTSIDE_TOLERANCE':
     '金額差異 {delta} が許容差 {tolerance} を超えています。',
   'explanation.DATE_MISSING':
-    '計上日または決済日が欠けているため、決済日を特定できません。',
+    '計上日または銀行処理日が欠けているため、決済の時期を特定できません。',
   'explanation.DATE_OUTSIDE_WINDOW':
     '決済日が {shift} 日ずれており、{window}日の許容期間を超えています。',
 
@@ -86,6 +86,7 @@ export const domain: DomainMessages = {
   'error.UNKNOWN_TRANSACTION': '不明な取引です。',
   'error.UNKNOWN_CURRENCY': 'この通貨はサポートされていません。',
   'error.TOLERANCE_OUT_OF_RANGE': '金額許容差がこの通貨の上限を超えています。',
+  'error.TOLERANCE_DECIMALS': '金額許容差の小数桁数がこの通貨で使用できる桁数を超えています。',
   'error.TIMEOUT': 'エンジンが時間内に応答しませんでした。接続を確認して、もう一度お試しください。',
   'error.UNREACHABLE': 'エンジンに接続できませんでした。',
   'error.GENERIC': 'リクエストに失敗しました。',

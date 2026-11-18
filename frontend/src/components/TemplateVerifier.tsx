@@ -2,13 +2,15 @@ import { CircleAlert, CircleCheck, Download, Upload } from 'lucide-react';
 import { useId, useState, type ChangeEvent } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { api, ApiError } from '../lib/api';
+import { errorText } from '../lib/errorText';
 import type { VerifyResult } from '../types/reconciliation';
 
 type Outcome = { file: string; result?: VerifyResult; failure?: ApiError; tooLarge?: boolean };
 
 /** Downloads the input template and checks a filled-in workbook against the schema. */
 export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number }) {
-  const { t, tn, tCode, fmt } = useI18n();
+  const i18n = useI18n();
+  const { t, tn, fmt } = i18n;
   const inputId = useId();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -32,13 +34,14 @@ export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number })
     }
   };
 
-  // Built on render so the messages follow a language change. Row-level
-  // validation messages come from the backend and stay in English.
+  // Built on render so the messages follow a language change. Only the
+  // row-level validation messages come from the backend and stay in English.
   const errors: string[] = [];
+  const backendMessages = outcome?.result !== undefined;
   if (outcome?.tooLarge) {
     errors.push(t('verify.tooLarge', { megabytes: fmt.integer(maxUploadBytes / (1024 * 1024)) }));
   } else if (outcome?.failure) {
-    errors.push(tCode('error', outcome.failure.code, outcome.failure.message || t('verify.failed')));
+    errors.push(errorText(i18n, outcome.failure));
   } else if (outcome?.result) {
     errors.push(...outcome.result.errors);
   }
@@ -86,7 +89,7 @@ export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number })
             </span>
           </p>
           {errors.length > 0 && (
-            <ul lang="en" className="mt-2 list-disc space-y-1 pl-5">
+            <ul lang={backendMessages ? 'en' : undefined} className="mt-2 list-disc space-y-1 pl-5">
               {errors.map((message, index) => (
                 <li key={`${index}-${message}`}>{message}</li>
               ))}

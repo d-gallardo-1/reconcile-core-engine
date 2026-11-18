@@ -114,7 +114,11 @@ class Scenario:
     build: Callable[[Currency], LedgerTransaction]
 
     def transaction(self, currency_code: str) -> LedgerTransaction:
-        return self.build(get_currency(currency_code))
+        built = self.build(get_currency(currency_code))
+        # The engine tracks an active scenario by ``tx_id``; the row must carry it.
+        if built.tx_id != self.tx_id or built.scenario_code != self.code:
+            raise ValueError(f"Scenario {self.code} builds a row with a different identity.")
+        return built
 
 
 SCENARIOS: dict[str, Scenario] = {

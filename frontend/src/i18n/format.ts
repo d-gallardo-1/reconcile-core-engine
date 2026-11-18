@@ -4,8 +4,6 @@ export interface Formatters {
   money: (value: number | null | undefined) => string;
   /** With an explicit sign, so a shortfall and an excess read differently. */
   signedMoney: (value: number) => string;
-  /** Plain number with the currency's decimals, for inputs and compact labels. */
-  amount: (value: number) => string;
   percent: (value: number, digits?: number) => string;
   integer: (value: number) => string;
   signedInteger: (value: number) => string;
@@ -13,19 +11,26 @@ export interface Formatters {
   currencyName: (code: string) => string;
 }
 
+/** ISO code for "no currency": used when the batch reports a code Intl rejects. */
+const NO_CURRENCY = 'XXX';
+
+function usable(currencyCode: string): string {
+  try {
+    new Intl.NumberFormat('en', { style: 'currency', currency: currencyCode });
+    return currencyCode;
+  } catch {
+    return NO_CURRENCY;
+  }
+}
+
 /**
  * Number and currency formatting for one language and one batch currency.
  * Intl takes the decimals from the currency itself (none for JPY or CLP).
  */
 export function createFormatters(intlLocale: string, currencyCode: string): Formatters {
-  const currency = { style: 'currency', currency: currencyCode } as const;
+  const currency = { style: 'currency', currency: usable(currencyCode) } as const;
   const money = new Intl.NumberFormat(intlLocale, currency);
   const signed = new Intl.NumberFormat(intlLocale, { ...currency, signDisplay: 'exceptZero' });
-  const decimals = money.resolvedOptions().maximumFractionDigits ?? 2;
-  const amount = new Intl.NumberFormat(intlLocale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
   const integer = new Intl.NumberFormat(intlLocale, { maximumFractionDigits: 0 });
   const signedInteger = new Intl.NumberFormat(intlLocale, {
     maximumFractionDigits: 0,
@@ -41,7 +46,6 @@ export function createFormatters(intlLocale: string, currencyCode: string): Form
   return {
     money: (value) => (value === null || value === undefined ? EM_DASH : money.format(value)),
     signedMoney: (value) => signed.format(value),
-    amount: (value) => amount.format(value),
     percent: (value, digits = 0) =>
       new Intl.NumberFormat(intlLocale, {
         style: 'percent',
@@ -50,7 +54,13 @@ export function createFormatters(intlLocale: string, currencyCode: string): Form
       }).format(value / 100),
     integer: (value) => integer.format(value),
     signedInteger: (value) => signedInteger.format(value),
-    currencyName: (code) => names?.of(code) ?? code,
+    currencyName: (code) => {
+      try {
+        return names?.of(code) ?? code;
+      } catch {
+        return code; // not a well-formed currency code
+      }
+    },
   };
 }
 

@@ -13,8 +13,9 @@ from typing import Callable
 
 from . import config
 from .batch_models import BatchState, CurrencyInfo, default_tolerance, scenario_infos
-from .currencies import DEFAULT_CURRENCY, UnknownCurrencyError, get_currency
+from .currencies import DEFAULT_CURRENCY, Currency, UnknownCurrencyError, get_currency
 from .errors import ConflictError, InvalidRequestError, NotFoundError, run_in_progress
+from .tolerance import check_tolerance
 from .kpis import compute_kpis
 from .live_run import LiveRun
 from .matching import reconcile
@@ -66,12 +67,18 @@ class ReconciliationEngine:
             ),
             publish_state=self.publish_state,
         )
-        self._load_defaults()
+        self._load_defaults(self._currency)
 
-    def _load_defaults(self) -> None:
-        """The default batch and rules, in the active currency."""
-        self._transactions = self._load_batch(self._currency.code)
-        self._tolerance = default_tolerance(self._currency.code)
+    def _load_defaults(self, currency: Currency) -> None:
+        """Switch to the default batch and rules in ``currency``.
+
+        The batch is loaded before anything is assigned, so a loader failure
+        leaves the engine exactly as it was.
+        """
+        transactions = self._load_batch(currency.code)
+        self._currency = currency
+        self._transactions = transactions
+        self._tolerance = default_tolerance(currency.code)
         self._resolutions: dict[str, Resolution] = {}
 
     # --- read side ---------------------------------------------------------
@@ -140,18 +147,12 @@ class ReconciliationEngine:
         except UnknownCurrencyError as error:
             raise InvalidRequestError("UNKNOWN_CURRENCY", str(error)) from None
         self._require_idle()
-        self._currency = currency
-        self._load_defaults()
+        self._load_defaults(currency)
         self._live.clear()
         return self.publish_state()
 
     def set_tolerance(self, amount_tolerance: Decimal, date_window_days: int) -> BatchState:
-        limit = self._currency.max_tolerance
-        if amount_tolerance > limit:
-            raise InvalidRequestError(
-                "TOLERANCE_OUT_OF_RANGE",
-                f"Amount tolerance cannot exceed {self._currency.format(limit)}.",
-            )
+        check_tolerance(self._currency, amount_tolerance)
         self._require_idle()
         self._tolerance = ToleranceConfig(
             amount_tolerance=amount_tolerance, date_window_days=date_window_days
@@ -172,7 +173,7 @@ class ReconciliationEngine:
 
     def reset(self) -> BatchState:
         self._require_idle()
-        self._load_defaults()
+        self._load_defaults(self._currency)
         self._live.clear()
         return self.publish_state()
 

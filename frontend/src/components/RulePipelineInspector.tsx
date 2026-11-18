@@ -1,7 +1,8 @@
 import { ArrowDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
+import { errorText } from '../lib/errorText';
 import { STATUS_META } from '../lib/statusMeta';
 import type { BatchState, LedgerSchema, MatchStatus } from '../types/reconciliation';
 import { TemplateVerifier } from './TemplateVerifier';
@@ -15,15 +16,17 @@ const PASSES: { number: 1 | 2 | 3; status: MatchStatus }[] = [
 ];
 
 export function RulePipelineInspector({ state }: { state: BatchState }) {
-  const { t, tn, fmt } = useI18n();
+  const i18n = useI18n();
+  const { t, tn, fmt } = i18n;
   const [schema, setSchema] = useState<LedgerSchema | null>(null);
-  const [schemaFailed, setSchemaFailed] = useState(false);
+  const [schemaFailure, setSchemaFailure] = useState<ApiError | null>(null);
 
   useEffect(() => {
     let active = true;
     api.ledgerSchema().then(
       (loaded) => active && setSchema(loaded),
-      () => active && setSchemaFailed(true),
+      (cause: unknown) =>
+        active && setSchemaFailure(cause instanceof ApiError ? cause : new ApiError('GENERIC', '')),
     );
     return () => {
       active = false;
@@ -79,9 +82,9 @@ export function RulePipelineInspector({ state }: { state: BatchState }) {
           {schema ? ` · ${t('schema.sheet', { sheet: schema.sheet })}` : ''}
         </h2>
         <TemplateVerifier maxUploadBytes={schema?.max_upload_bytes ?? DEFAULT_MAX_UPLOAD_BYTES} />
-        {schemaFailed && (
+        {schemaFailure && (
           <p role="alert" className="mt-4 text-sm text-red-300">
-            {t('error.UNREACHABLE')}
+            {errorText(i18n, schemaFailure)}
           </p>
         )}
         {schema && (

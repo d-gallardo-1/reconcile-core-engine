@@ -90,6 +90,7 @@ export const domain = {
   'error.UNKNOWN_TRANSACTION': 'Unknown transaction.',
   'error.UNKNOWN_CURRENCY': 'This currency is not supported.',
   'error.TOLERANCE_OUT_OF_RANGE': 'The amount tolerance is above the limit for this currency.',
+  'error.TOLERANCE_DECIMALS': 'The amount tolerance has more decimals than this currency allows.',
   'error.TIMEOUT': 'The engine did not answer in time. Check the connection and try again.',
   'error.UNREACHABLE': 'The engine could not be reached.',
   'error.GENERIC': 'The request failed.',

@@ -55,7 +55,7 @@ cannot be edited afterwards.
 
 The default batch holds 15 transactions: 9 exact matches, 3 tolerance matches and 3
 anomalies, at the default tolerances (±15.00 in GBP, scaled for other currencies, and
-±2 days). The amounts below are the GBP figures.
+±2 days). The amounts in the table above are the GBP figures.
 
 ## Quickstart
 

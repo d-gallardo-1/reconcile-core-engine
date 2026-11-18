@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import { ApiError } from '../lib/api';
+import { errorText } from '../lib/errorText';
 
 /**
  * Runs API calls and keeps the last error for display, in the active language
@@ -8,7 +9,7 @@ import { ApiError } from '../lib/api';
  * response: it arrives over SSE, the same way every other tab receives it.
  */
 export function useAction() {
-  const { tCode, t } = useI18n();
+  const i18n = useI18n();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ApiError | null>(null);
 
@@ -27,9 +28,7 @@ export function useAction() {
   }, []);
 
   // Translated on every render, so the message follows a language change.
-  const error = failure
-    ? tCode('error', failure.code, failure.message || t('error.GENERIC'))
-    : null;
+  const error = failure ? errorText(i18n, failure) : null;
 
   return { busy, error, run, clearError: () => setFailure(null) };
 }

@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/* Design tokens (Tailwind CSS v4 reads its theme from CSS, not from a JS config). */
+@theme {
+  --color-obsidian: #090d16;
+  --color-panel: #111827;
+  --color-edge: #1f2937;
+  --color-exact: #10b981;
+  --color-tolerance: #06b6d4;
+  --color-anomaly: #ef4444;
+  --color-audited: #f59e0b;
+
+  /* System font stacks only: the UI must render with no network access. */
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-screen bg-obsidian font-sans text-slate-200 antialiased;
+  }
+
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  /* Visible keyboard focus on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--color-tolerance);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: rgb(6 182 212 / 0.3);
+  }
+
+  input[type='range'] {
+    accent-color: var(--color-tolerance);
+  }
+
+  /* Native progress element: styled here because the CSP forbids inline styles. */
+  progress {
+    @apply h-2 w-full appearance-none overflow-hidden rounded-full bg-edge;
+  }
+  progress::-webkit-progress-bar {
+    background-color: var(--color-edge);
+  }
+  progress::-webkit-progress-value {
+    background-color: var(--color-tolerance);
+    transition: width 150ms linear;
+  }
+  progress::-moz-progress-bar {
+    background-color: var(--color-tolerance);
+  }
+}
+
+@utility panel {
+  @apply rounded-lg border border-edge bg-panel;
+}
+
+@utility panel-title {
+  @apply text-xs font-semibold uppercase tracking-[0.14em] text-slate-400;
+}
+
+/* Currency and identifiers: fixed-width digits so columns align. */
+@utility num {
+  @apply font-mono tabular-nums;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md border border-edge bg-obsidian px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-md border border-tolerance/60 bg-tolerance/15 px-3 py-2 text-sm font-semibold text-cyan-100 transition-colors hover:bg-tolerance/25 disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility field {
+  @apply rounded-md border border-edge bg-obsidian px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500;
+}

@@ -96,6 +96,7 @@ python -m pytest -q
 
 cd ../frontend
 npm ci
+npm test               # unit tests (Vitest + jsdom)
 npm run build          # type check + production build
 ```
 
@@ -174,8 +175,11 @@ Built and covered by automated tests:
 - The SSE stream: initial snapshot, broadcast to several subscribers, heartbeat and the
   ordered progress of a live run, and a run that fails midway being reported as failed.
 
-Not covered by automated tests: the frontend. It is type-checked, built and was
-exercised by hand in a browser, but has no unit tests.
+Frontend unit tests cover the logic that can go wrong silently: the live-run state, the
+stream reconnection rules, the tolerance draft, number and currency formatting, API error
+handling, and that every language has the same keys and placeholders as English. The
+components' layout and the full screens are not tested automatically; they were exercised
+by hand in a browser.
 
 Deliberately not built:
 

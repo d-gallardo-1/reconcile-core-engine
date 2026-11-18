@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv } from 'vite';
+import { loadEnv } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 // In local development the Vite server proxies /api to the backend, so the
 // browser always talks to a single origin (the same shape as the Nginx setup
@@ -14,5 +15,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     server: { host: '127.0.0.1', port: 5174, strictPort: true, proxy },
     preview: { host: '127.0.0.1', port: 4174, proxy },
+    test: { environment: 'jsdom', include: ['src/**/*.test.{ts,tsx}'], restoreMocks: true },
   };
 });

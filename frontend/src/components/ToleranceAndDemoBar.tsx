@@ -30,7 +30,7 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
         </h2>
         <div className="text-right">
           <label htmlFor={currencyId} className="flex items-center justify-end gap-2 text-sm text-slate-300">
-            <Coins aria-hidden="true" className="h-4 w-4 text-slate-500" />
+            <Coins aria-hidden="true" className="h-4 w-4 text-slate-400" />
             {t('demo.currency')}
             <select
               id={currencyId}
@@ -49,7 +49,7 @@ export function ToleranceAndDemoBar({ state, liveRun }: { state: BatchState; liv
               ))}
             </select>
           </label>
-          <p className="mt-1 text-xs text-slate-500">{t('demo.currencyHint')}</p>
+          <p className="mt-1 text-xs text-slate-400">{t('demo.currencyHint')}</p>
         </div>
       </div>
 

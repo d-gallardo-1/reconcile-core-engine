@@ -79,7 +79,7 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen, onShownChange }: Pr
           {t('table.search')}
         </label>
         <div className="relative w-full max-w-sm">
-          <Search aria-hidden="true" className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-slate-500" />
+          <Search aria-hidden="true" className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-slate-400" />
           <input
             id={searchId}
             type="search"

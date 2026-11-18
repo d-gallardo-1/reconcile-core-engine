@@ -10,7 +10,7 @@ function AmountAndDate({ amount, date, note }: { amount: number | null; date: st
   const { t, fmt } = useI18n();
   if (amount === null) {
     return (
-      <span className="text-slate-500">
+      <span className="text-slate-400">
         {EM_DASH} {t('row.noEntry')}
       </span>
     );
@@ -58,13 +58,13 @@ export function MatchRow({ record, liveStatus, current, selected, onToggle, onOp
       <th scope="row" className="whitespace-nowrap px-3 py-3 text-left font-normal">
         <button
           type="button"
-          className="num font-semibold text-cyan-300 underline-offset-2 hover:underline"
+          className="num inline-flex min-h-6 items-center font-semibold text-cyan-300 underline-offset-2 hover:underline"
           onClick={() => onOpen(record.tx_id)}
           aria-label={t('row.open', { id: record.tx_id })}
         >
           {record.tx_id}
         </button>
-        <span className="num block text-xs text-slate-500">{record.invoice_ref}</span>
+        <span className="num block text-xs text-slate-400">{record.invoice_ref}</span>
       </th>
       <td className="px-3 py-3 text-slate-200">{record.counterparty}</td>
       <td className="whitespace-nowrap px-3 py-3 text-right">
@@ -87,7 +87,7 @@ export function MatchRow({ record, liveStatus, current, selected, onToggle, onOp
           {t(`taxCheck.${record.tax_check}`)}
         </span>
       </td>
-      <td className={`num whitespace-nowrap px-3 py-3 text-right ${variance === 0 ? 'text-slate-500' : variance < 0 ? 'text-red-300' : 'text-amber-300'}`}>
+      <td className={`num whitespace-nowrap px-3 py-3 text-right ${variance === 0 ? 'text-slate-400' : variance < 0 ? 'text-red-300' : 'text-amber-300'}`}>
         {fmt.signedMoney(variance)}
       </td>
       <td className="px-3 py-3">

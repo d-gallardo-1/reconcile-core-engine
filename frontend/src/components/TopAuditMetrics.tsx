@@ -14,7 +14,7 @@ function Metric(props: { icon: LucideIcon; title: string; value: ReactNode; deta
   return (
     <div className="panel flex flex-col gap-2 p-4">
       <dt className="panel-title flex items-center gap-2">
-        <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-500" />
+        <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
         {props.title}
       </dt>
       <dd className="num break-words text-2xl font-semibold text-slate-50">{props.value}</dd>

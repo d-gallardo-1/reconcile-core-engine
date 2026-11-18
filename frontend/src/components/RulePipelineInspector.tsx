@@ -42,7 +42,7 @@ export function RulePipelineInspector({ state }: { state: BatchState }) {
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <section aria-labelledby="pipeline-title" className="panel p-4">
         <h2 id="pipeline-title" className="panel-title mb-4">
           {t('rules.pipelineTitle')}
@@ -68,7 +68,7 @@ export function RulePipelineInspector({ state }: { state: BatchState }) {
             );
           })}
         </ol>
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-slate-400">
           {t('rules.footnote', {
             total: fmt.integer(passThree),
             resolved: fmt.integer(kpis.resolved_count),
@@ -92,7 +92,7 @@ export function RulePipelineInspector({ state }: { state: BatchState }) {
         )}
         {schema && (
           <div className="mt-4 overflow-x-auto">
-            <p className="mb-2 text-xs text-slate-500">{t('schema.englishNote')}</p>
+            <p className="mb-2 text-xs text-slate-400">{t('schema.englishNote')}</p>
             <table className="w-full min-w-[560px] border-collapse text-sm">
               <caption className="sr-only">{t('schema.caption')}</caption>
               <thead>

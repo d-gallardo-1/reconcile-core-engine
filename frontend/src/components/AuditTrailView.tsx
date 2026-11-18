@@ -32,7 +32,7 @@ export function AuditTrailView({ state, onOpen, onShownChange }: Props) {
           {totals.map(({ action, count }) => ` · ${t(`action.${action}`)}: ${fmt.integer(count)}`)}
         </p>
       </div>
-      <p className="mb-4 text-xs text-slate-500">{t('audit.noIdentity')}</p>
+      <p className="mb-4 text-xs text-slate-400">{t('audit.noIdentity')}</p>
 
       {entries.length === 0 ? (
         <p className="py-6 text-center text-sm text-slate-400">{t('audit.empty')}</p>

@@ -94,7 +94,7 @@ export function ToleranceControls({ tolerance, currency, disabled, revision, onP
               className="field num w-28"
             />
           </div>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-400">
             {t('tol.amountHint', { min: fmt.money(0), max: fmt.money(amountMax) })}
           </p>
         </div>
@@ -125,7 +125,7 @@ export function ToleranceControls({ tolerance, currency, disabled, revision, onP
               className="field num w-28"
             />
           </div>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-400">
             {t('tol.windowHint', { max: tn('unit.days', DAYS_MAX) })}
           </p>
         </div>

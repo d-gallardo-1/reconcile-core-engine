@@ -50,7 +50,7 @@ export function ResolutionForm({ onResolve, onResolved, inline = false }: Props)
         placeholder={t('form.placeholder')}
         className="field resize-y"
       />
-      <p className="num text-right text-xs text-slate-500">
+      <p className="num text-right text-xs text-slate-400">
         {note.length}/{NOTE_MAX}
       </p>
       <div className={inline ? 'flex flex-wrap gap-2' : 'grid gap-2'}>
@@ -67,7 +67,7 @@ export function ResolutionForm({ onResolve, onResolved, inline = false }: Props)
           </button>
         ))}
       </div>
-      <p className="text-xs text-slate-500">{t('form.immutable')}</p>
+      <p className="text-xs text-slate-400">{t('form.immutable')}</p>
       {error && (
         <p role="alert" className="rounded border border-anomaly/50 bg-anomaly/10 px-3 py-2 text-sm text-red-200">
           {error}

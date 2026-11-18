@@ -60,7 +60,7 @@ export function MatchTableHead({ currencyCode, sort, onSort, allSelected, onTogg
                   type="button"
                   title={t('sort.by', { column: label })}
                   onClick={() => onSort(sortKey)}
-                  className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-slate-100 ${active ? 'text-cyan-200' : ''}`}
+                  className={`inline-flex min-h-6 items-center gap-1 uppercase tracking-wide hover:text-slate-100 ${active ? 'text-cyan-200' : ''}`}
                 >
                   {label}
                   <Icon aria-hidden="true" className={`h-3.5 w-3.5 ${active ? '' : 'opacity-40'}`} />

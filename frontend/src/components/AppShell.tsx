@@ -59,7 +59,7 @@ export function AppShell({ state, status, liveRun }: Props) {
               : t('app.demoBadge')}
           </p>
           <label htmlFor={languageId} className="flex items-center gap-2 text-sm text-slate-300">
-            <Languages aria-hidden="true" className="h-4 w-4 text-slate-500" />
+            <Languages aria-hidden="true" className="h-4 w-4 text-slate-400" />
             <span className="sr-only">{t('app.language')}</span>
             <select
               id={languageId}

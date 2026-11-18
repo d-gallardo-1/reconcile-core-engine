@@ -81,5 +81,5 @@
 }
 
 @utility field {
-  @apply rounded-md border border-edge bg-obsidian px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500;
+  @apply rounded-md border border-edge bg-obsidian px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-400;
 }

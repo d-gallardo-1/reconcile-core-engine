@@ -135,7 +135,7 @@ export function AnomalyResolutionPanel({ record, neighbours, onNavigate, onClose
             </dl>
           </section>
         )}
-        <p className="mt-auto text-xs text-slate-500">{t('drawer.keys')}</p>
+        <p className="mt-auto text-xs text-slate-400">{t('drawer.keys')}</p>
       </aside>
     </div>
   );

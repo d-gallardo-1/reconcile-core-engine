@@ -24,7 +24,7 @@ export function DrawerHeader({ record, titleId, neighbours, onNavigate, onClose,
           {record.tx_id}
         </h3>
         <p className="text-sm text-slate-300">{record.counterparty}</p>
-        <p className="num text-xs text-slate-500">{record.invoice_ref}</p>
+        <p className="num text-xs text-slate-400">{record.invoice_ref}</p>
       </div>
       <div className="flex items-center gap-1">
         {position > 0 && (

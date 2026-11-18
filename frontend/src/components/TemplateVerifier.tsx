@@ -91,7 +91,7 @@ export function TemplateVerifier({ state, maxUploadBytes }: Props) {
         </label>
         <input id={inputId} type="file" accept=".xlsx" disabled={busy} onChange={onFile} className="sr-only" />
       </div>
-      <p className="text-xs text-slate-500">{t('verify.readOnly')}</p>
+      <p className="text-xs text-slate-400">{t('verify.readOnly')}</p>
       {outcome && (
         <div
           role="status"

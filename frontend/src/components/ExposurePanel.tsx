@@ -23,7 +23,7 @@ export function ExposurePanel({ state, onOpen }: Props) {
         </h2>
         <p className="num text-sm text-slate-300">{fmt.money(ranking.total)}</p>
       </div>
-      <p className="mb-3 text-xs text-slate-500">{t('exposure.hint')}</p>
+      <p className="mb-3 text-xs text-slate-400">{t('exposure.hint')}</p>
 
       {ranking.items.length === 0 ? (
         <p className="text-sm text-slate-400">{t('exposure.empty')}</p>
@@ -57,7 +57,7 @@ export function ExposurePanel({ state, onOpen }: Props) {
         </ol>
       )}
       {ranking.restCount > 0 && (
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-slate-400">
           {t('exposure.rest', { count: fmt.integer(ranking.restCount) })}
         </p>
       )}

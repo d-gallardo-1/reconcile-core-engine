@@ -84,17 +84,13 @@ def test_live_run_streams_three_passes_in_order(engine):
     assert final["run"]["processed"] == 24
 
 
-def test_run_endpoint_completes_and_blocks_changes_while_running():
-    engine = build_engine(step_seconds=0.02)  # slow enough to observe RUNNING
+def test_run_endpoint_completes_and_then_accepts_changes():
+    # The refusals during a run are covered without timing in test_review_fixes.
+    engine = build_engine(step_seconds=0)
     with TestClient(create_app(engine)) as client:
         response = client.post(f"{API}/reconcile/run")
         assert response.status_code == 202
         assert response.json()["status"] == "RUNNING"
-        assert client.post(f"{API}/reconcile/run").status_code == 409
-        assert client.post(f"{API}/reconcile/reset").status_code == 409
-        assert client.post(f"{API}/reconcile/inject/SCN-301").status_code == 409
-        tolerance = {"amount_tolerance_gbp": 1, "date_window_days": 1}
-        assert client.post(f"{API}/reconcile/tolerance", json=tolerance).status_code == 409
 
         deadline = time.monotonic() + 10
         run = client.get(f"{API}/batches/current").json()["run"]

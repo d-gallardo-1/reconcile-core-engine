@@ -62,6 +62,9 @@ RESOLUTION_COLUMNS: tuple[Column, ...] = (
     Column("Resolved At (UTC)", "resolved_at", "text", True, "Immutable audit timestamp."),
 )
 
+#: Largest absolute amount accepted in a money or rate cell.
+MAX_ABSOLUTE_NUMBER = Decimal("1000000000000")
+
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
@@ -92,9 +95,13 @@ def from_cell(column: Column, value: Any) -> Any:
         if isinstance(value, bool):
             raise ValueError("must be a number")
         try:
-            return Decimal(str(value))
+            number = Decimal(str(value))
         except InvalidOperation:
             raise ValueError("must be a number") from None
+        if not number.is_finite() or abs(number) > MAX_ABSOLUTE_NUMBER:
+            limit = f"{MAX_ABSOLUTE_NUMBER:,}"
+            raise ValueError(f"must be a number between -{limit} and {limit}")
+        return number
     if column.kind == "date":
         if isinstance(value, datetime):
             return value.date()
@@ -105,7 +112,13 @@ def from_cell(column: Column, value: Any) -> Any:
         except ValueError:
             raise ValueError("must be a date (YYYY-MM-DD)") from None
     if column.kind == "integer":
-        if isinstance(value, bool) or not float(value).is_integer():
+        if isinstance(value, (bool, str)):
+            raise ValueError("must be a whole number")
+        try:
+            whole = float(value).is_integer()
+        except (ValueError, TypeError, OverflowError):
+            whole = False
+        if not whole:
             raise ValueError("must be a whole number")
         return int(value)
     return str(value).strip()

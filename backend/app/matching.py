@@ -55,8 +55,10 @@ def tax_check(tx: LedgerTransaction) -> TaxCheck:
         return TaxCheck.CERTIFICATE_MISSING
     if tx.tax_status is TaxStatus.NOT_REGISTERED:
         return TaxCheck.NOT_REGISTERED
-    if tx.erp_amount_gbp is None or tx.vat_rate is None:
-        return TaxCheck.VERIFIED
+    if tx.erp_amount_gbp is None:
+        return TaxCheck.VERIFIED  # nothing to compare; pass 3 reports the missing ERP entry
+    if tx.vat_rate is None:
+        return TaxCheck.VAT_MISMATCH  # a registry amount cannot be checked without a rate
     if tx.tax_vat_amount_gbp != expected_vat(tx.erp_amount_gbp, tx.vat_rate):
         return TaxCheck.VAT_MISMATCH
     return TaxCheck.VERIFIED
@@ -67,6 +69,8 @@ def _three_way_complete(tx: LedgerTransaction) -> bool:
     return (
         tx.erp_amount_gbp is not None
         and tx.bank_amount_gbp is not None
+        and tx.erp_date is not None
+        and tx.bank_date is not None
         and tx.bank_settlement_count == 1
         and tax_check(tx) is TaxCheck.VERIFIED
     )
@@ -126,13 +130,16 @@ def pass_anomaly(tx: LedgerTransaction, tolerance: ToleranceConfig) -> Verdict:
         why = "Invoice is missing from the tax/VAT registry."
     elif check is TaxCheck.VAT_MISMATCH:
         kind = AnomalyType.VAT_MISMATCH
-        why = "VAT recorded in the tax registry differs from the ERP VAT rate."
+        why = "VAT in the tax registry cannot be reconciled with the ERP VAT rate."
     elif abs(delta) > tolerance.amount_tolerance_gbp:
         kind = AnomalyType.AMOUNT_VARIANCE
         why = (
             f"Amount variance {delta:+.2f} GBP exceeds the "
             f"{tolerance.amount_tolerance_gbp:.2f} GBP tolerance."
         )
+    elif shift is None:
+        kind = AnomalyType.SETTLEMENT_DATE_SHIFT
+        why = "A posting or clearing date is missing, so the settlement cannot be dated."
     else:
         kind = AnomalyType.SETTLEMENT_DATE_SHIFT
         why = (

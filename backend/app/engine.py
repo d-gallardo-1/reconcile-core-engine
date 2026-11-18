@@ -61,7 +61,7 @@ class ReconciliationEngine:
         data_notice: str,
         transactions: list[LedgerTransaction],
         scenarios: dict[str, Scenario],
-        step_seconds: float = 0.15,
+        step_seconds: float = config.DEFAULT_STEP_SECONDS,
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         self._entity, self._batch_id, self._data_notice = entity, batch_id, data_notice
@@ -170,6 +170,7 @@ class ReconciliationEngine:
         return self.publish_state()
 
     def resolve(self, tx_id: str, action: ResolutionAction, note: str) -> BatchState:
+        self._require_idle()  # a run replays verdicts computed when it started
         record = next((r for r in self.records() if r.tx_id == tx_id), None)
         if record is None:
             raise NotFoundError(f"Unknown transaction: {tx_id}.")

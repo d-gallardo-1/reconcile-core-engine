@@ -71,6 +71,7 @@ class RunStatus(str, Enum):
     IDLE = "IDLE"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class LedgerTransaction(BaseModel):

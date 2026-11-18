@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 from decimal import Decimal
@@ -22,17 +23,23 @@ MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 
 HEARTBEAT_SECONDS = 5.0
 
+#: Pause between two records of a live run, so a viewer can follow it.
+DEFAULT_STEP_SECONDS = 0.15
+MAX_STEP_SECONDS = 2.0
+
 
 @dataclass(frozen=True)
 class Settings:
-    #: Pause between two records of a live run, so a viewer can follow it.
-    step_seconds: float = 0.15
+    step_seconds: float = DEFAULT_STEP_SECONDS
 
 
 def load_settings() -> Settings:
-    raw = os.environ.get("RECONCILE_STEP_SECONDS", "0.15")
+    """Read RECONCILE_STEP_SECONDS; an unusable value falls back to the default."""
+    raw = os.environ.get("RECONCILE_STEP_SECONDS", "")
     try:
-        step_seconds = min(max(float(raw), 0.0), 2.0)
+        value = float(raw)
     except ValueError:
-        step_seconds = 0.15
-    return Settings(step_seconds=step_seconds)
+        return Settings()
+    if not math.isfinite(value):
+        return Settings()
+    return Settings(step_seconds=min(max(value, 0.0), MAX_STEP_SECONDS))

@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
 from .. import excel_schema
@@ -20,6 +21,7 @@ from ..excel_io import (
 from ..mock_ledgers import base_transactions
 from .schemas import LedgerSchemaResponse, SchemaColumn, VerifyResponse
 
+TOO_LARGE = f"Workbook is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -69,16 +71,17 @@ def build_export_router(engine: ReconciliationEngine) -> APIRouter:
         """Validate an uploaded workbook (raw body). The active batch is not changed."""
         declared = request.headers.get("content-length", "")
         if declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES:
-            raise HTTPException(413, "Workbook is larger than 2 MB.")
+            raise HTTPException(413, TOO_LARGE)
         content = bytearray()
         async for chunk in request.stream():
             content.extend(chunk)
             if len(content) > MAX_UPLOAD_BYTES:
-                raise HTTPException(413, "Workbook is larger than 2 MB.")
+                raise HTTPException(413, TOO_LARGE)
         if not content:
             raise HTTPException(400, "The request body is empty.")
         try:
-            transactions = parse_ledger_workbook(bytes(content))
+            # Parsing is CPU-bound: off the event loop, so SSE clients keep receiving.
+            transactions = await run_in_threadpool(parse_ledger_workbook, bytes(content))
         except WorkbookError as error:
             return VerifyResponse(valid=False, row_count=0, errors=error.errors)
         return VerifyResponse(valid=True, row_count=len(transactions), errors=[])

@@ -132,6 +132,8 @@ def _parse_row(number: int, cells: tuple) -> tuple[LedgerTransaction | None, lis
         return None, errors
     try:
         return LedgerTransaction(**values), []
+    except ArithmeticError:
+        return None, [f"Row {number}: a numeric value is out of range."]
     except ValidationError as error:
         return None, [
             f"Row {number}, '{'.'.join(str(p) for p in issue['loc'])}': {issue['msg']}."
@@ -157,12 +159,14 @@ def parse_ledger_workbook(filepath: Target | bytes) -> list[LedgerTransaction]:
 
         transactions, errors, seen = [], [], set()
         for number, cells in enumerate(rows, start=2):
+            # Checked before anything else, so blank rows and rows with data
+            # only outside the schema columns cannot keep the loop running.
+            if number > MAX_ROWS + 1:
+                errors.append(f"The sheet has more than {MAX_ROWS} rows.")
+                break
             cells = tuple(cells[: len(expected)])
             if all(cell is None for cell in cells):
                 continue
-            if number > MAX_ROWS + 1:
-                errors.append(f"The sheet has more than {MAX_ROWS} data rows.")
-                break
             transaction, row_errors = _parse_row(number, cells)
             errors.extend(row_errors)
             if transaction is None:

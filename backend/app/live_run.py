@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime
 from typing import Callable
 
 from .models import ReconciledRecord, RunState, RunStatus
 from .run_plan import RunStep, build_run_steps
+
+logger = logging.getLogger(__name__)
 
 
 class LiveRun:
@@ -49,6 +52,7 @@ class LiveRun:
 
     async def _execute(self, steps: list[RunStep]) -> None:
         run_id = self.state.run_id
+        outcome = RunStatus.FAILED  # until the last step has been published
         try:
             for index, step in enumerate(steps, start=1):
                 await asyncio.sleep(self._step_seconds)
@@ -60,11 +64,15 @@ class LiveRun:
                     }
                 )
                 self._publish_progress(step.to_progress(self.state).model_dump_json())
+            outcome = RunStatus.COMPLETED
+        except Exception:
+            logger.exception("Live run %s failed at step %s", run_id, self.state.processed)
         finally:
-            # Also reached on cancellation (shutdown): never leave RUNNING behind.
+            # Also reached on cancellation (shutdown): never leave RUNNING behind,
+            # and never report an interrupted run as completed.
             if self.state.run_id == run_id:
                 self.state = self.state.model_copy(
-                    update={"status": RunStatus.COMPLETED, "completed_at": self._clock()}
+                    update={"status": outcome, "completed_at": self._clock()}
                 )
                 self._publish_state()
 

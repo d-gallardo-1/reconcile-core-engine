@@ -18,7 +18,7 @@ from .api.errors import install_error_handlers
 from .api.export_routes import build_export_router
 from .api.read_routes import build_read_router
 from .api.reconcile_routes import build_reconcile_router
-from .config import API_PREFIX, Settings, load_settings
+from .config import API_PREFIX, DEFAULT_STEP_SECONDS, Settings, load_settings
 from .engine import ReconciliationEngine
 from .excel_io import export_template_workbook, parse_ledger_workbook
 from .mock_ledgers import BATCH_ID, DATA_NOTICE, ENTITY_NAME, SCENARIOS, base_transactions
@@ -32,7 +32,7 @@ def load_batch_via_excel(transactions: list[LedgerTransaction]) -> list[LedgerTr
     return parse_ledger_workbook(buffer.getvalue())
 
 
-def build_engine(*, step_seconds: float = 0.15) -> ReconciliationEngine:
+def build_engine(*, step_seconds: float = DEFAULT_STEP_SECONDS) -> ReconciliationEngine:
     return ReconciliationEngine(
         entity=ENTITY_NAME,
         batch_id=BATCH_ID,

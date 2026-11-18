@@ -1,12 +1,14 @@
 import { CircleAlert, CircleCheck, Download, Upload } from 'lucide-react';
 import { useId, useState, type ChangeEvent } from 'react';
-import { api } from '../lib/api';
+import { useI18n } from '../i18n/I18nProvider';
+import { api, ApiError } from '../lib/api';
 import type { VerifyResult } from '../types/reconciliation';
 
-type Outcome = { file: string; result?: VerifyResult; error?: string };
+type Outcome = { file: string; result?: VerifyResult; failure?: ApiError; tooLarge?: boolean };
 
 /** Downloads the input template and checks a filled-in workbook against the schema. */
 export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number }) {
+  const { t, tn, tCode, fmt } = useI18n();
   const inputId = useId();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -16,32 +18,41 @@ export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number })
     event.target.value = ''; // allow choosing the same file again
     if (!file) return;
     if (file.size > maxUploadBytes) {
-      const limitMb = (maxUploadBytes / (1024 * 1024)).toFixed(0);
-      setOutcome({ file: file.name, error: `The workbook is larger than ${limitMb} MB.` });
+      setOutcome({ file: file.name, tooLarge: true });
       return;
     }
     setBusy(true);
     try {
       setOutcome({ file: file.name, result: await api.verifyTemplate(file) });
     } catch (cause) {
-      setOutcome({ file: file.name, error: cause instanceof Error ? cause.message : 'Upload failed.' });
+      const failure = cause instanceof ApiError ? cause : new ApiError('GENERIC', '');
+      setOutcome({ file: file.name, failure });
     } finally {
       setBusy(false);
     }
   };
 
-  const errors = outcome?.error ? [outcome.error] : (outcome?.result?.errors ?? []);
+  // Built on render so the messages follow a language change. Row-level
+  // validation messages come from the backend and stay in English.
+  const errors: string[] = [];
+  if (outcome?.tooLarge) {
+    errors.push(t('verify.tooLarge', { megabytes: fmt.integer(maxUploadBytes / (1024 * 1024)) }));
+  } else if (outcome?.failure) {
+    errors.push(tCode('error', outcome.failure.code, outcome.failure.message || t('verify.failed')));
+  } else if (outcome?.result) {
+    errors.push(...outcome.result.errors);
+  }
   const valid = outcome?.result?.valid === true;
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap gap-2">
         <a className="btn" href={api.exportTemplateUrl} download>
           <Download aria-hidden="true" className="h-4 w-4" />
-          Download .XLSX Template
+          {t('verify.download')}
         </a>
         <label htmlFor={inputId} className={`btn cursor-pointer ${busy ? 'opacity-50' : ''}`}>
           <Upload aria-hidden="true" className="h-4 w-4" />
-          {busy ? 'Verifying…' : 'Verify a Workbook'}
+          {busy ? t('verify.verifying') : t('verify.upload')}
         </label>
         <input
           id={inputId}
@@ -52,10 +63,7 @@ export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number })
           className="sr-only"
         />
       </div>
-      <p className="text-xs text-slate-500">
-        Verification is read-only: the workbook is checked against the schema and discarded. It
-        does not replace the active batch.
-      </p>
+      <p className="text-xs text-slate-500">{t('verify.readOnly')}</p>
       {outcome && (
         <div
           role="status"
@@ -63,17 +71,22 @@ export function TemplateVerifier({ maxUploadBytes }: { maxUploadBytes: number })
             valid ? 'border-exact/40 bg-exact/10 text-emerald-200' : 'border-anomaly/50 bg-anomaly/10 text-red-200'
           }`}
         >
-          <p className="flex items-center gap-2 font-semibold">
+          <p className="flex flex-wrap items-center gap-2 font-semibold">
             {valid ? (
               <CircleCheck aria-hidden="true" className="h-4 w-4" />
             ) : (
               <CircleAlert aria-hidden="true" className="h-4 w-4" />
             )}
             <span className="num break-all">{outcome.file}</span>
-            {valid ? `· valid, ${outcome.result?.row_count} rows` : '· not valid'}
+            <span>
+              ·{' '}
+              {valid
+                ? t('verify.valid', { rows: tn('unit.records', outcome.result?.row_count ?? 0) })
+                : t('verify.invalid')}
+            </span>
           </p>
           {errors.length > 0 && (
-            <ul className="mt-2 list-disc space-y-1 pl-5">
+            <ul lang="en" className="mt-2 list-disc space-y-1 pl-5">
               {errors.map((message, index) => (
                 <li key={`${index}-${message}`}>{message}</li>
               ))}

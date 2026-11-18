@@ -12,15 +12,24 @@ export const API_BASE = '/api/v1';
 // A request that gets no answer is abandoned, so the controls do not stay locked.
 const REQUEST_TIMEOUT_MS = 15000;
 
-/** Uses the server's own explanation when it sends one, so errors are readable. */
-async function errorMessage(response: Response, fallback: string): Promise<string> {
-  try {
-    const body = (await response.json()) as { detail?: unknown };
-    if (typeof body.detail === 'string') return body.detail;
-  } catch {
-    /* not JSON: fall through */
+/** An API failure. `code` is stable and translated by the UI; `message` is English. */
+export class ApiError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
   }
-  return fallback;
+}
+
+async function failure(response: Response, fallback: string): Promise<ApiError> {
+  try {
+    const body = (await response.json()) as { detail?: unknown; code?: unknown };
+    const detail = typeof body.detail === 'string' ? body.detail : fallback;
+    return new ApiError(typeof body.code === 'string' ? body.code : 'GENERIC', detail);
+  } catch {
+    return new ApiError('GENERIC', fallback);
+  }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -32,15 +41,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     });
   } catch (cause) {
     const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError';
-    throw new Error(
-      timedOut
-        ? 'The engine did not answer in time. Check the connection and try again.'
-        : 'The engine could not be reached.',
-    );
+    throw timedOut
+      ? new ApiError('TIMEOUT', 'The engine did not answer in time.')
+      : new ApiError('UNREACHABLE', 'The engine could not be reached.');
   }
   if (!response.ok) {
     const fallback = `${init?.method ?? 'GET'} ${path} failed with HTTP ${response.status}`;
-    throw new Error(await errorMessage(response, fallback));
+    throw await failure(response, fallback);
   }
   return (await response.json()) as T;
 }
@@ -54,9 +61,10 @@ const post = <T>(path: string, body?: unknown) =>
 
 export const api = {
   run: () => post<RunState>('/reconcile/run'),
-  setTolerance: (amountToleranceGbp: number, dateWindowDays: number) =>
+  setCurrency: (currency: string) => post<BatchState>('/batches/currency', { currency }),
+  setTolerance: (amountTolerance: number, dateWindowDays: number) =>
     post<BatchState>('/reconcile/tolerance', {
-      amount_tolerance_gbp: amountToleranceGbp,
+      amount_tolerance: amountTolerance,
       date_window_days: dateWindowDays,
     }),
   reset: () => post<BatchState>('/reconcile/reset'),

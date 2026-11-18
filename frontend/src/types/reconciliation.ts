@@ -1,4 +1,5 @@
-// Mirrors backend/app/models.py. Amounts arrive as plain JSON numbers in GBP.
+// Mirrors backend/app/models.py and batch_models.py. Amounts arrive as plain
+// JSON numbers in the batch currency.
 
 export type MatchStatus = 'EXACT_MATCH' | 'TOLERANCE_MATCH' | 'ANOMALY' | 'RESOLVED';
 
@@ -25,7 +26,7 @@ export type RunStatus = 'IDLE' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 export type StreamStatus = 'CONNECTED' | 'RECONNECTING' | 'DISCONNECTED';
 
 export interface ToleranceConfig {
-  amount_tolerance_gbp: number;
+  amount_tolerance: number;
   date_window_days: number;
 }
 
@@ -34,42 +35,46 @@ export interface Resolution {
   resolution_note: string;
   resolved_at: string;
   anomaly_type: AnomalyType;
-  variance_gbp: number;
+  variance: number;
 }
 
 export interface ReconciledRecord {
   tx_id: string;
   invoice_ref: string;
   counterparty: string;
-  erp_amount_gbp: number | null;
+  currency: string;
+  erp_amount: number | null;
   erp_date: string | null;
   vat_rate: number | null;
-  bank_amount_gbp: number | null;
+  bank_amount: number | null;
   bank_date: string | null;
   bank_settlement_count: number;
   tax_status: TaxStatus;
-  tax_vat_amount_gbp: number | null;
+  tax_vat_amount: number | null;
   scenario_code: string | null;
   status: MatchStatus;
   matched_in_pass: number;
   anomaly_type: AnomalyType | null;
-  variance_gbp: number;
+  variance: number;
   date_shift_days: number | null;
   tax_check: TaxCheck;
+  /** English fallback; the UI translates explanation_code with its parameters. */
   explanation: string;
+  explanation_code: string;
+  explanation_params: Record<string, number | string>;
   resolution: Resolution | null;
 }
 
 export interface Kpis {
   total_records: number;
-  total_ledger_volume_gbp: number;
+  total_ledger_volume: number;
   exact_count: number;
   tolerance_count: number;
   anomaly_count: number;
   resolved_count: number;
   match_rate_pct: number;
-  net_unreconciled_variance_gbp: number;
-  gross_unreconciled_exposure_gbp: number;
+  net_unreconciled_variance: number;
+  gross_unreconciled_exposure: number;
 }
 
 export interface ScenarioInfo {
@@ -105,12 +110,21 @@ export interface ReconciliationProgress {
   classification: MatchStatus | null;
 }
 
+export interface CurrencyInfo {
+  code: string;
+  minor_units: number;
+  max_amount_tolerance: number;
+  amount_tolerance_step: number;
+}
+
 export interface BatchState {
   entity: string;
   batch_id: string;
   data_notice: string;
   sequence: number;
   generated_at: string;
+  currency: CurrencyInfo;
+  available_currencies: string[];
   tolerance: ToleranceConfig;
   default_tolerance: ToleranceConfig;
   kpis: Kpis;

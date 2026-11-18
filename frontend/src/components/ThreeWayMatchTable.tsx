@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useI18n } from '../i18n/I18nProvider';
+import type { MessageKey } from '../i18n/messages/types';
 import { FILTERS, type StatusFilter } from '../lib/statusMeta';
 import type { BatchState, LiveRun } from '../types/reconciliation';
 import { MatchRow } from './MatchRow';
@@ -9,17 +11,18 @@ interface Props {
   onOpen: (txId: string) => void;
 }
 
-const HEADERS: { label: string; align?: 'right' }[] = [
-  { label: 'TX ID' },
-  { label: 'Counterparty' },
-  { label: 'ERP Amount & Date', align: 'right' },
-  { label: 'Bank Amount & Date', align: 'right' },
-  { label: 'Tax/VAT Status' },
-  { label: 'Variance (£)', align: 'right' },
-  { label: 'Match Classification' },
+const HEADERS: { key: MessageKey; align?: 'right' }[] = [
+  { key: 'col.txId' },
+  { key: 'col.counterparty' },
+  { key: 'col.erp', align: 'right' },
+  { key: 'col.bank', align: 'right' },
+  { key: 'col.tax' },
+  { key: 'col.variance', align: 'right' },
+  { key: 'col.classification' },
 ];
 
 export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
+  const { t, fmt } = useI18n();
   const [filter, setFilter] = useState<StatusFilter>('ALL');
 
   const counts = useMemo(() => {
@@ -34,22 +37,22 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
     <section aria-labelledby="match-table-title" className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 p-4">
         <h2 id="match-table-title" className="panel-title">
-          Side-by-Side 3-Way Match · ERP / Bank / Tax Registry
+          {t('table.title')}
         </h2>
-        <div role="group" aria-label="Filter by classification" className="flex flex-wrap gap-1">
+        <div role="group" aria-label={t('filter.aria')} className="flex flex-wrap gap-1">
           {FILTERS.map((option) => (
             <button
-              key={option.value}
+              key={option}
               type="button"
-              aria-pressed={filter === option.value}
-              onClick={() => setFilter(option.value)}
+              aria-pressed={filter === option}
+              onClick={() => setFilter(option)}
               className={`rounded-md border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
-                filter === option.value
+                filter === option
                   ? 'border-tolerance/60 bg-tolerance/15 text-cyan-100'
                   : 'border-edge text-slate-400 hover:border-slate-500 hover:text-slate-200'
               }`}
             >
-              {option.label} <span className="num">{counts[option.value] ?? 0}</span>
+              {t(`filter.${option}`)} <span className="num">{fmt.integer(counts[option] ?? 0)}</span>
             </button>
           ))}
         </div>
@@ -60,11 +63,12 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
             <tr className="bg-obsidian/60 text-xs uppercase tracking-wide text-slate-400">
               {HEADERS.map((header) => (
                 <th
-                  key={header.label}
+                  key={header.key}
                   scope="col"
                   className={`px-3 py-2 font-semibold ${header.align === 'right' ? 'text-right' : 'text-left'}`}
                 >
-                  {header.label}
+                  {t(header.key)}
+                  {header.key === 'col.variance' ? ` (${state.currency.code})` : ''}
                 </th>
               ))}
             </tr>
@@ -83,7 +87,7 @@ export function ThreeWayMatchTable({ state, liveRun, onOpen }: Props) {
         </table>
         {rows.length === 0 && (
           <p className="border-t border-edge p-6 text-center text-sm text-slate-400">
-            No records with this classification in the current batch.
+            {t('table.empty')}
           </p>
         )}
       </div>
